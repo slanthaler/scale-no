@@ -1,0 +1,20 @@
+---
+#
+name: 'default'
+
+# fno2d
+modes: 12
+width: 16
+depth: 4
+
+# training
+batch_size: 32
+epochs: 200
+n_train: 16
+n_test: 8
+n_selfcon: 
+
+# datasets
+train_data: 'darcy_BC_Nsamp32_Ns512.mat'
+test_data: 'darcy_BC_Nsamp32_Ns512.mat'
+selfcon_data: ''
