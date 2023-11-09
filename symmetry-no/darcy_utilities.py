@@ -84,13 +84,27 @@ def DarcyExtractBC(x,y):
     """
     Extract boundary conditions from y and add them to channels 1,...,4 in x.
     """
-    unsqueeze_x = x.ndim
+    unsqueeze_x = (x.ndim==3) # check whether batch dimension is missing
+    unsqueeze_y = (y.ndim==3)
 
+    # add batch dimension
+    if unsqueeze_x:
+        x = x.unsqueeze(0)
+    if unsqueeze_y:
+        y = y.unsqueeze(0)
+
+    # extract BC
     Nx, Ny = y.shape[-2], y.shape[-1]
     x[:,1,:,:] = y[:,0, 0, :].unsqueeze(1).repeat(1,Nx,1)  # left boundary
     x[:,2,:,:] = y[:,0, :, 0].unsqueeze(2).repeat(1,1,Ny)  # lower boundary
     x[:,3,:,:] = y[:,0,-1, :].unsqueeze(1).repeat(1,Nx,1)  # right boundary
     x[:,4,:,:] = y[:,0, :,-1].unsqueeze(2).repeat(1,1,Ny)  # upper boundary
+
+    # undo adding of batch dimension
+    if unsqueeze_x:
+        x = x[0]
+    if unsqueeze_y:
+        y = y[0]
 
     return x
         
