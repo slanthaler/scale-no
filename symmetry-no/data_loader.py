@@ -2,14 +2,13 @@ from pathlib import Path
 import os.path
 import h5py
 import numpy as np
-import scipy.io
 
 import torch
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 
 from darcy_utilities import DarcyExtractBC
-from data_augmentation import AugmentedTensorDataset, Compose, RandomCropResize, RandomFlip
+from data_augmentation import AugmentedTensorDataset, Compose, RandomCropResize, RandomFlip, GridResizing, GridResize
 
 # taken from 
 # [https://stackoverflow.com/questions/17316880/reading-v-7-3-mat-file-in-python]
@@ -88,8 +87,8 @@ class DarcyReader:
 
         #
         if grid_size and grid_size>0:
-            x = F.interpolate(x, size=(grid_size,grid_size), mode='bilinear', align_corners=True)
-            y = F.interpolate(y, size=(grid_size,grid_size), mode='bilinear', align_corners=True)
+            x = GridResize(x,grid_size)
+            y = GridResize(y,grid_size)
 
         return x, y
 
@@ -157,7 +156,7 @@ class SelfconReader:
 
         #
         if grid_size and grid_size>0:
-            x = F.interpolate(x, size=(grid_size,grid_size), mode='bilinear', align_corners=True)
+            x = GridResize(x,grid_size)
 
         return x
 
@@ -174,7 +173,7 @@ class DarcyData:
         self.test_file = config['test_data']
         if config['selfcon_data']:
             self.selfcon = True
-            self.selfcon_file = self.data_dir + config['selfcon_data']
+            self.selfcon_file = config['selfcon_data']
         else:
             self.selfcon = False
             self.selfcon_file = None  
@@ -188,6 +187,10 @@ class DarcyData:
         self.train_data = DarcyReader(self.train_file,
                                       n_samp=self.n_train,
                                       grid_size=self.grid_size)
+        # update the grid_size
+        if self.grid_size<0:
+            self.grid_size = self.train_data.x.shape[-1]
+
         self.test_data = DarcyReader(self.test_file,
                                      n_samp=self.n_test,
                                      grid_size=self.grid_size)
@@ -202,10 +205,15 @@ class DarcyData:
                                                  scale_min=cfig['scale_min'],
                                                  size_min=cfig['size_min']
                                                  )
+            self.t_GridResizing = GridResizing(self.grid_size)
             cfig = config['use_augmentation']['Flip']
             self.t_Flip = RandomFlip(p=cfig['p'])
             # compose all of these
-            self.transform_xy = Compose([self.t_CropResize, self.t_Flip])
+            self.transform_xy = Compose([
+                self.t_CropResize, 
+                self.t_GridResizing, 
+                self.t_Flip
+                ])
         else:          
             self.transform_xy = None
 

@@ -19,7 +19,7 @@ def DefaultConfig():
                         'size_min': 32},
             Flip={'p': 0.5}
         ),
-        grid_size=-1,
+        grid_size=128,
         n_train=16,
         n_test=8,
         n_selfcon=0,

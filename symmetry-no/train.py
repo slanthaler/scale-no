@@ -87,7 +87,7 @@ def main(config):
 
             # unsupervised training (selfconsistency constraint)
             if data.selfcon:
-                x_sc = d['selfcon']
+                x_sc = d['selfcon'][0]
                 x_sc = x_sc.to(device)
                 #
                 loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
@@ -95,7 +95,6 @@ def main(config):
                 #
                 train_sc += loss_sc.item()
 
-            break
             #
             loss.backward()
             optimizer.step()
