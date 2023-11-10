@@ -8,13 +8,18 @@ width: 16
 depth: 4
 
 # training
+learning_rate: 1e-2
 batch_size: 32
 epochs: 200
 n_train: 16
 n_test: 8
-n_selfcon: 
+n_selfcon:
+grid_size: 64
 
 # datasets
 train_data: 'darcy_BC_Nsamp32_Ns512.mat'
 test_data: 'darcy_BC_Nsamp32_Ns512.mat'
-selfcon_data: ''
+selfcon_data: 'darcy_BC_Nsamp32_Ns512.mat'
+
+#
+#use_augmentation: None

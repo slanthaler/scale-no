@@ -26,8 +26,41 @@ class AugmentedTensorDataset(Dataset):
         return self.x.size(0)
 
 
+#
+def GridResize(x,grid_size,mode='bilinear'):
+    """
+    Resize the grid values by interpolation in the last two components.
+    Expected input is either of size 
+        batch x channel x original_size x original_size
+    or
+        channel x original_size x original_size
+    """
+    if x.ndim==4:
+        return torch.nn.functional.interpolate(x, 
+                                               size=(grid_size,grid_size), 
+                                               mode='bilinear', 
+                                               align_corners=True)
+    elif x.ndim==3:
+        return torch.nn.functional.interpolate(x.unsqueeze(0), 
+                                               size=(grid_size,grid_size), 
+                                               mode='bilinear', 
+                                               align_corners=True).squeeze(0)
+    else:
+        ValueError(f'Input x to GridResize must be a tensor with either 3 or 4 dimensions! {x.ndims=}, {x.shape=}')
+
 
 # data augmentation routines
+class GridResizing:
+    def __init__(self,grid_size):
+        self.grid_size = grid_size
+
+    def __call__(self,x,y):
+        return self.forward(x,y)
+    
+    def forward(self,x,y):
+        x = GridResize(x,self.grid_size)
+        y = GridResize(y,self.grid_size)
+        return x,y
 
 class Compose:
     def __init__(self,transforms):
@@ -80,7 +113,7 @@ class RandomCropResize:
 
         Args:
             x,y (tensor): Input and corresponding output (assumed having same last two dimensions).
-            
+        
         Returns:
             tuple: params (i, j, h, w) to be passed to ``crop`` for a random
                 sized crop.
@@ -118,13 +151,12 @@ class RandomCropResize:
         i,j,h,w = self.get_params(x,y)
         self.bbox = (i,j,h,w) # only used for illustration
         # transform inputs and outputs
-        print('size before crop, ', x.shape)
         x,y  = self.crop(x,i,j,h,w), self.crop(y,i,j,h,w)
         # 
-        print('size after crop, ', x.shape)
         x = DarcyExtractBC(x,y)
-        return x,y
 
+        return x,y
+    
 class RandomRotation:
     def __init__(self, p=0.5):
         raise NotImplementedError
