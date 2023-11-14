@@ -1,8 +1,9 @@
 #!/bin/bash
 
-#SBATCH --time=00:30
+#SBATCH --time=00:30:00
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
+#SBATCH --gres gpu:1
 #SBATCH --job-name="test-0-0"
 #SBATCH --output=slurm-%x.%j.out
 #SBATCH --error=slurm-%x.%j.out
