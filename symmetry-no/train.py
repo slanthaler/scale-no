@@ -121,8 +121,8 @@ def main(config):
         print(f'[{epoch+1:3}], time: {t2-t1:.3f}, train: {train_l2:.5f}, test: {test_l2:.5f}')
         
 #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
-#    torch.save(model.state_dict(), "model.h5")
-#    # wandb.save('model.h5')
+    torch.save(model.state_dict(), "model.h5")
+    wandb.save('model.h5')
 #
 if __name__ == '__main__':
     main(config)
