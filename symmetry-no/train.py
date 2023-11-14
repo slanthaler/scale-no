@@ -34,6 +34,7 @@ def main(config):
     #
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
+    print(f'Using cuda? {device=}')
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     
     # Set random seeds and deterministic pytorch for reproducibility
