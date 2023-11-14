@@ -103,6 +103,10 @@ class FNO2d(nn.Module):
             self.mlp.append(MLP(self.width, self.width, self.width))
             self.w.append(nn.Conv2d(self.width, self.width, 1))
         #
+        self.conv = nn.ModuleList(self.conv)
+        self.mlp = nn.ModuleList(self.mlp)
+        self.w = nn.ModuleList(self.w)
+        #
         self.q = MLP(self.width, self.out_channel, self.width * 4) # output channel is 1: u(x, y)
 
     def forward(self, x):
