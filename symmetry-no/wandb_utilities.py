@@ -1,11 +1,13 @@
-def wandb_login(api_key_file="./config/wandb_api_key.txt", key=None):
+from rootdir import ROOT_DIR
+
+def wandb_login(api_key_file=ROOT_DIR + "/config/wandb_api_key.txt", key=None):
     if key is None:
         key = get_wandb_api_key(api_key_file)
 
     wandb.login(key=key)
 
 
-def set_wandb_api_key(api_key_file="./config/wandb_api_key.txt"):
+def set_wandb_api_key(api_key_file=ROOT_DIR + "/config/wandb_api_key.txt"):
     import os
 
     try:
@@ -16,7 +18,7 @@ def set_wandb_api_key(api_key_file="./config/wandb_api_key.txt"):
         os.environ["WANDB_API_KEY"] = key.strip()
 
 
-def get_wandb_api_key(api_key_file="./config/wandb_api_key.txt"):
+def get_wandb_api_key(api_key_file=ROOT_DIR + "/config/wandb_api_key.txt"):
     import os
 
     try:
