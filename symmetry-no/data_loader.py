@@ -9,6 +9,7 @@ import torch.nn.functional as F
 
 from darcy_utilities import DarcyExtractBC
 from data_augmentation import AugmentedTensorDataset, Compose, RandomCropResize, RandomFlip, GridResizing, GridResize
+from rootdir import ROOT_DIR
 
 # taken from 
 # [https://stackoverflow.com/questions/17316880/reading-v-7-3-mat-file-in-python]
@@ -25,7 +26,7 @@ class DarcyReader:
     Helper class to read in Darcy dataset.
     """
 
-    def __init__(self, mat_file, root_dir='./data/', n_samp=None, grid_size=None):
+    def __init__(self, mat_file, root_dir=ROOT_DIR + '/data/', n_samp=None, grid_size=None):
         """
         Args:
             mat_file (string): Path to the mat file (Matlab v7.3).
@@ -98,7 +99,7 @@ class SelfconReader:
     Helper class to read in selfconsistency dataset (this has only input data, no outupts).
     """
 
-    def __init__(self, mat_file, root_dir='./data/', n_samp=None, grid_size=None):
+    def __init__(self, mat_file, root_dir=ROOT_DIR + '/data/', n_samp=None, grid_size=None):
         """
         Args:
             mat_file (string): Path to the mat file (Matlab v7.3).

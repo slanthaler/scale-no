@@ -13,7 +13,7 @@ batch_size: 32
 epochs: 200
 n_train: 16
 n_test: 8
-n_selfcon:
+n_selfcon: 32
 grid_size: 64
 
 # datasets
@@ -22,4 +22,4 @@ test_data: 'darcy_BC_Nsamp32_Ns512.mat'
 selfcon_data: 'darcy_BC_Nsamp32_Ns512.mat'
 
 #
-#use_augmentation: None
+use_augmentation: None

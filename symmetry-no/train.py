@@ -6,21 +6,23 @@ from data_loader import DarcyData
 from config_helper import ReadConfig
 from wandb_utilities import *
 from fno2d import *
-from darcy_utilities import LossSelfconsistency
+from selfconsistency import LossSelfconsistency
 
 # parse command line arguments
 # (need to specify <name> of run = config_<name>.yaml)
 parser = argparse.ArgumentParser()
-parser.add_argument("--name",
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument('-n', "--name",
                     type=str,
-                    help="Specify name of run (requires: config_<name>.yaml).",
-                    required=True
-)
+                    help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
+group.add_argument('-c', "--config",
+                   type=str,
+                   help="Specify the full config-file path.")
 parser.add_argument('--nowandb', action='store_true')
 args = parser.parse_args()
 
 # read the config file
-config = ReadConfig(args.name)
+config = ReadConfig(args.name,args.config)
 print(config)
 
 # WandB – Initialize a new run

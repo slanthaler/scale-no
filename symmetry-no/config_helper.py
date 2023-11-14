@@ -1,5 +1,7 @@
 from configmypy import ConfigPipeline, YamlConfig, ArgparseConfig
 
+from rootdir import ROOT_DIR
+
 def DefaultConfig():
     #
     config = dict(
@@ -30,11 +32,16 @@ def DefaultConfig():
     )
     return config
 
-def ReadConfig(run_name):
+def ReadConfig(name,config_file):
+    if name:           
+        config_file = ROOT_DIR + '/config/config_' + name + '.yaml'
+
+        if config_file:
+            ValueError('--name and --config flags are mutually exclusive!')
+    
     # read-in user supplied key values
-    config_file = 'config_' + run_name + '.yaml'
     pipe = ConfigPipeline([
-        YamlConfig(config_file, config_folder="./config"),
+        YamlConfig(config_file),
     ])
     config_user = pipe.read_conf()
     
