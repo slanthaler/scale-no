@@ -42,6 +42,7 @@ def main(config):
     torch.backends.cudnn.deterministic = True
 
     # load training and test datasets
+    print('Loading datasets...')
     data = DarcyData(config)
 
     # Initialize our model, recursively go over all modules and convert their parameters and buffers to CUDA tensors (if device is set to cuda)
