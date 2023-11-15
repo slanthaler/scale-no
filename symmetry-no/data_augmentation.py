@@ -60,6 +60,7 @@ class GridResizing:
     def forward(self,x,y):
         x = GridResize(x,self.grid_size)
         y = GridResize(y,self.grid_size)
+        x = DarcyExtractBC(x,y)
         return x,y
 
 class Compose:
@@ -85,12 +86,14 @@ class RandomFlip:
     def forward(self,x,y):
         if torch.rand(1) < self.p:
             rnd = torch.rand(1)
-            if rnd < 0.25:
+            if rnd < 0.33:
                 x,y = F.hflip(x), F.hflip(y)
-            elif rnd < 0.5:
+            elif rnd < 0.66:
                 x,y = F.vflip(x), F.vflip(y)
-            elif rnd < 0.75:
-                x,y, = F.vflip(F.hflip(x)), F.vflip(F.hflip(y))        
+            else:
+                x,y, = F.vflip(F.hflip(x)), F.vflip(F.hflip(y))  
+        #
+        x = DarcyExtractBC(x,y)
         return x,y
 
 class RandomCropResize:
