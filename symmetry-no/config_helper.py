@@ -1,6 +1,27 @@
-from configmypy import ConfigPipeline, YamlConfig, ArgparseConfig
+from ruamel.yaml import YAML
+from argparse import Namespace 
 
 from rootdir import ROOT_DIR
+
+# taken from [ https://dev.to/taqkarim/extending-simplenamespace-for-nested-dictionaries-58e8 ]
+class RecursiveNamespace(Namespace):
+
+    @staticmethod
+    def map_entry(entry):
+        if isinstance(entry, dict):
+            return RecursiveNamespace(**entry)
+    
+        return entry
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        for key, val in kwargs.items():
+            if type(val) == dict:
+                setattr(self, key, RecursiveNamespace(**val))
+            elif type(val) == list:
+                setattr(self, key, list(map(self.map_entry, val)))
+
+    
 
 def DefaultConfig():
     #
@@ -32,6 +53,16 @@ def DefaultConfig():
     )
     return config
 
+def CleanUpNone(config):
+    for key,val in config.items():
+        if isinstance(val,dict):
+            config[key] = CleanUpNone(val)
+        if isinstance(val,str):
+            if val.lower()=='none':
+                config[key] = None
+
+    return config
+
 def ReadConfig(name,config_file):
     if name:           
         config_file = ROOT_DIR + '/config/config_' + name + '.yaml'
@@ -39,15 +70,18 @@ def ReadConfig(name,config_file):
         if config_file:
             ValueError('--name and --config flags are mutually exclusive!')
     
-    # read-in user supplied key values
-    pipe = ConfigPipeline([
-        YamlConfig(config_file),
-    ])
-    config_user = pipe.read_conf()
-    
+    yaml = YAML()
+    with open("config.yaml", "r") as f:
+        config_user = yaml.load(f)
     # 
     config = DefaultConfig()
     for key in config_user:
         config[key] = config_user[key]
+
+    # make sure None is read as type None, not <'None', type(str)>
+    config = CleanUpNone(config)
+
+    # prefer namespace over dictionary
+    config = RecursiveNamespace(**config)
 
     return config
