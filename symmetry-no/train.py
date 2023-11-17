@@ -23,7 +23,6 @@ args = parser.parse_args()
 
 # read the config file
 config = ReadConfig(args.name,args.config)
-print(config)
 
 # WandB – Initialize a new run
 if not args.nowandb:
@@ -38,7 +37,7 @@ def main(config):
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     
     # Set random seeds and deterministic pytorch for reproducibility
-    torch.manual_seed(config['seed'])
+    torch.manual_seed(config.seed)
     torch.backends.cudnn.deterministic = True
 
     # load training and test datasets
@@ -46,27 +45,27 @@ def main(config):
     data = DarcyData(config)
 
     # Initialize our model, recursively go over all modules and convert their parameters and buffers to CUDA tensors (if device is set to cuda)
-    modes1 = config['modes']
-    modes2 = config['modes']
-    width  = config['width']
-    depth  = config['depth']
+    modes1 = config.modes
+    modes2 = config.modes
+    width  = config.width
+    depth  = config.depth
     #
     model = FNO2d(modes1,modes2,width,depth).to(device)
     print('FNO2d parameter count: ',count_params(model))
 
     #
-    batch_size = config['batch_size']
-    epochs = config['epochs']
-    n_train = config['n_train']
-    n_test = config['n_test']
+    batch_size = config.batch_size
+    epochs = config.epochs
+    n_train = config.n_train
+    n_test = config.n_test
     iterations = epochs*max(1,n_train//batch_size)
-    optimizer  = torch.optim.Adam(model.parameters(), lr=config['learning_rate'], weight_decay=config['weight_decay'])
+    optimizer  = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     scheduler  = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=iterations)
 
     # WandB – wandb.watch() automatically fetches all layer dimensions, gradients, model parameters and logs them automatically to your dashboard.
     # Using log="all" log histograms of parameter values in addition to gradients
     if not args.nowandb:
-       wandb.watch(model, log="all")
+       wandb.watch(model, log_freq=20, log="all")
 
     loss_fn = LpLoss(size_average=False)
     for epoch in range(1, epochs + 1): # config.epochs
@@ -115,10 +114,13 @@ def main(config):
                 # DO WE NEED TO NORMALIZE THE OUTPUT??
                 test_l2 += loss_fn(out.view(batch_size,-1), y.view(batch_size,-1)).item()
 
+        # normalize losses
         train_l2 /= n_train
+        train_sc /= n_train
         test_l2 /= n_test
 
         t2 = default_timer()
+        wandb.log({'time':t2-t1, 'train_l2':train_l2, 'test_l2':test_l2, 'train_selfcon':train_sc})
         print(f'[{epoch+1:3}], time: {t2-t1:.3f}, train: {train_l2:.5f}, test: {test_l2:.5f}')
         
 #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.

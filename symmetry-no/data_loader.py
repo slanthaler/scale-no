@@ -170,19 +170,19 @@ class DarcyData:
 
     def __init__(self, config):
         # Load training and test datasets
-        self.train_file = config['train_data']
-        self.test_file = config['test_data']
-        if config['selfcon_data']:
+        self.train_file = config.train_data
+        self.test_file = config.test_data
+        if config.selfcon_data:
             self.selfcon = True
-            self.selfcon_file = config['selfcon_data']
+            self.selfcon_file = config.selfcon_data
         else:
             self.selfcon = False
             self.selfcon_file = None  
 
-        self.n_train = config['n_train']
-        self.n_test = config['n_test']
-        self.grid_size = config['grid_size']
-        self.batch_size = config['batch_size']
+        self.n_train = config.n_train
+        self.n_test = config.n_test
+        self.grid_size = config.grid_size
+        self.batch_size = config.batch_size
 
         # load datasets
         self.train_data = DarcyReader(self.train_file,
@@ -200,15 +200,15 @@ class DarcyData:
                                               n_samp=self.n_train,
                                               grid_size=self.grid_size)
 
-        if config['use_augmentation']:
-            cfig = config['use_augmentation']['CropResize']
-            self.t_CropResize = RandomCropResize(p=cfig['p'],
-                                                 scale_min=cfig['scale_min'],
-                                                 size_min=cfig['size_min']
+        if config.use_augmentation:
+            cfig = config.use_augmentation.CropResize
+            self.t_CropResize = RandomCropResize(p=cfig.p,
+                                                 scale_min=cfig.scale_min,
+                                                 size_min=cfig.size_min
                                                  )
             self.t_GridResizing = GridResizing(self.grid_size)
-            cfig = config['use_augmentation']['Flip']
-            self.t_Flip = RandomFlip(p=cfig['p'])
+            cfig = config.use_augmentation.Flip
+            self.t_Flip = RandomFlip(p=cfig.p)
             # compose all of these
             self.transform_xy = Compose([
                 self.t_CropResize, 
