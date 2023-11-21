@@ -56,6 +56,8 @@ def main(config):
     #
     batch_size = config.batch_size
     epochs = config.epochs
+    start_selfcon = epochs-config.epochs_selfcon
+    track_selfcon = config.track_selfcon
     n_train = config.n_train
     n_test = config.n_test
     iterations = epochs*max(1,n_train//batch_size)
@@ -89,12 +91,13 @@ def main(config):
             train_l2 += loss.item()
 
             # unsupervised training (selfconsistency constraint)
-            if data.selfcon:
+            if data.selfcon and (track_selfcon or epoch>=start_selfcon):
                 x_sc = d['selfcon'][0]
                 x_sc = x_sc.to(device)
                 #
                 loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
-                loss += loss_sc
+                if epoch>=start_selfcon:
+                    loss += loss_sc
                 #
                 train_sc += loss_sc.item()
 
@@ -120,8 +123,9 @@ def main(config):
         test_l2 /= n_test
 
         t2 = default_timer()
-        wandb.log({'time':t2-t1, 'train_l2':train_l2, 'test_l2':test_l2, 'train_selfcon':train_sc})
-        print(f'[{epoch+1:3}], time: {t2-t1:.3f}, train: {train_l2:.5f}, test: {test_l2:.5f}')
+        if not args.nowandb:
+            wandb.log({'time':t2-t1, 'train_l2':train_l2, 'test_l2':test_l2, 'train_selfcon':train_sc})
+        print(f'[{epoch+1:3}], time: {t2-t1:.3f}, train: {train_l2:.5f}, test: {test_l2:.5f}, train_sc: {train_sc:.5f}')
         
 #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
     torch.save(model.state_dict(), "model.h5")
