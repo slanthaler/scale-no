@@ -33,6 +33,8 @@ def DefaultConfig():
         width=16,
         depth=4,
         # training
+        epochs=200,
+        epochs_selfcon=50,
         learning_rate=1e-4,
         weight_decay=1e-4,
         batch_size=32,
@@ -45,11 +47,12 @@ def DefaultConfig():
         grid_size=128,
         n_train=16,
         n_test=8,
-        n_selfcon=0,
         # datasets
         train_data='',
         test_data='',
         selfcon_data='',
+        # track selfconsistency loss?
+        track_selfcon=True,
     )
     return config
 
