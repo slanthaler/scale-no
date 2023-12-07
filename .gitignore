@@ -2,3 +2,5 @@
 \#*
 wandb/*
 symmetry-no/__pycache__
+*.cpython*
+*.egg-info
