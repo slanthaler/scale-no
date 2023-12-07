@@ -7,9 +7,9 @@ import torch
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 
-from darcy_utilities import DarcyExtractBC
-from data_augmentation import AugmentedTensorDataset, Compose, RandomCropResize, RandomFlip, GridResizing, GridResize
-from rootdir import ROOT_DIR
+from symmetry_no.darcy_utilities import DarcyExtractBC
+from symmetry_no.data_augmentation import AugmentedTensorDataset, Compose, RandomCropResize, RandomFlip, GridResizing, GridResize
+from symmetry_no.rootdir import ROOT_DIR
 
 # taken from 
 # [https://stackoverflow.com/questions/17316880/reading-v-7-3-mat-file-in-python]

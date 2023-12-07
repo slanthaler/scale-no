@@ -2,11 +2,11 @@ import sys
 import wandb
 import argparse
 
-from data_loader import DarcyData
-from config_helper import ReadConfig
-from wandb_utilities import *
-from fno2d import *
-from selfconsistency import LossSelfconsistency
+from symmetry_no.data_loader import DarcyData
+from symmetry_no.config_helper import ReadConfig
+from symmetry_no.wandb_utilities import *
+from symmetry_no.fno2d import *
+from symmetry_no.selfconsistency import LossSelfconsistency
 
 # parse command line arguments
 # (need to specify <name> of run = config_<name>.yaml)

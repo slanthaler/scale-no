@@ -1,5 +1,5 @@
-from data_augmentation import RandomCropResize
-from darcy_utilities import DarcyExtractBC
+from symmetry_no.data_augmentation import RandomCropResize
+from symmetry_no.darcy_utilities import DarcyExtractBC
 
 def LossSelfconsistency(model,x,loss_fn):
     """

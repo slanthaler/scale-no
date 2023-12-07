@@ -2,7 +2,7 @@ import torch
 from torch.utils.data.dataset import Dataset
 import torchvision.transforms.functional as F
 
-from darcy_utilities import DarcyExtractBC
+from symmetry_no.darcy_utilities import DarcyExtractBC
 
 # tensor dataset with augmentation possibility
 
