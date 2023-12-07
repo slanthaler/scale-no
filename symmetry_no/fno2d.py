@@ -10,7 +10,7 @@ as discussed in Section 5.2 in the [paper](https://arxiv.org/pdf/2010.08895.pdf)
 
 import torch.nn.functional as F
 from timeit import default_timer
-from utilities3 import *
+from symmetry_no.utilities3 import *
 
 torch.manual_seed(0)
 np.random.seed(0)

@@ -10,7 +10,7 @@ import scipy.io
 import h5py
 import torch.nn as nn
 
-import operator
+#import operator
 from functools import reduce
 from functools import partial
 
