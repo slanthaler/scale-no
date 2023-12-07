@@ -1,7 +1,4 @@
-# Script to produce plots illustrating the dataset:
-# Parse arguments:
-# - filename of dataset
-# - folder with plots to save
+# Script to produce plots illustrating a Darcy flow dataset
 
 import sys
 import os
@@ -20,10 +17,14 @@ parser.add_argument('-f', "--filename",
                     type=str,
                     help="Specify filename of dataset.",
                     required=True)
-parser.add_argument('-p', "--plots",
+parser.add_argument('-d', "--folder",
                     type=str,
                     help="Specify folder to save plots.",
                     required=True)
+parser.add_argument('-p', "--plots",
+                    type=int,
+                    help="Specify number of plots to produce.",
+                    default=10)
 args = parser.parse_args()
 
 # load training and test datasets
@@ -31,7 +32,7 @@ print('Loading datasets...')
 data = DarcyReader(args.filename)
 
 # create folder for plots
-os.mkdir(args.plots) if not os.path.exists(args.plots) else None
+os.mkdir(args.folder) if not os.path.exists(args.folder) else None
 
 # filename without suffix
 filename = os.path.basename(args.filename)
@@ -40,7 +41,9 @@ filename = os.path.basename(args.filename)
 print('Plotting samples...')
 
 # get a random index set
-idx_set = np.unique(np.random.randint(0, data.x.shape[0], 100))[0:4]
+idx_set = np.array([])
+while len(idx_set) < args.plots:
+    idx_set = np.unique(np.random.randint(0, data.x.shape[0], 10*args.plots))[0:args.plots]
 x_tags = ['Pressure', 'BC1', 'BC2', 'BC3', 'BC4']
 
 for i in idx_set:
@@ -77,4 +80,4 @@ for i in idx_set:
     fig.colorbar(im, ax=axs[si])
 
     # save plot
-    plt.savefig(os.path.join(args.plots, f'samples_{i}_{filename}.png'))
+    plt.savefig(os.path.join(args.folder, f'samples_{i}_{filename}.png'))
