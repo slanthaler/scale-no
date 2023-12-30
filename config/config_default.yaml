@@ -25,4 +25,5 @@ test_data: 'darcy_test_BC_Nsamp1024_Ns128_alphacoeff1.00_alphag1.00.mat'
 selfcon_data: 'darcy_BC_Nsamp1024_Ns128_alphacoeff1.00_alphag1.00.mat'
 
 #
-use_augmentation: True
+augmentation_loss: True
+use_augmentation:
