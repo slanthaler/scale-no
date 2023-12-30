@@ -97,7 +97,7 @@ class RandomFlip:
         return x,y
 
 class RandomCropResize:
-    def __init__(self, p=0.5, scale_min=0.1, size_min=32):
+    def __init__(self, p=0.5, scale_min=0.1, size_min=40):
         """
         Args:
             p (float): probability with which to apply the transformation
