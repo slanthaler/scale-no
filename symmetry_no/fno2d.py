@@ -89,7 +89,6 @@ class FNO2d(nn.Module):
         self.modes2 = modes2
         self.width = width
         self.depth = depth
-        self.padding = 9 # pad the domain if input is non-periodic
         self.in_channel = in_channel
         self.out_channel = out_channel
         
@@ -114,7 +113,6 @@ class FNO2d(nn.Module):
         x = torch.cat((x, grid), dim=1) # 1 is the channel dimension
         x = self.p(x.permute(0,2,3,1)).permute(0,3,1,2)
         #x = x.permute(0, 3, 1, 2)
-        x = F.pad(x, [0,self.padding, 0,self.padding])
 
         for i in range(self.depth):
             x1 = self.conv[i](x)
@@ -123,7 +121,6 @@ class FNO2d(nn.Module):
             x = x1 + x2
             x = F.gelu(x)
 
-        x = x[..., :-self.padding, :-self.padding]
         x = self.q(x)
         #x = x.permute(0, 2, 3, 1)
         return x

@@ -11,17 +11,20 @@ from symmetry_no.selfconsistency import LossSelfconsistency
 # parse command line arguments
 # (need to specify <name> of run = config_<name>.yaml)
 parser = argparse.ArgumentParser()
-group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument('-n', "--name",
+# group = parser.add_mutually_exclusive_group()
+parser.add_argument('-n', "--name",
                     type=str,
-                    help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
-group.add_argument('-c', "--config",
+                    help="Specify name of run (requires: config_<name>.yaml in ./config folder).",
+                   default='default')
+parser.add_argument('-c', "--config",
                    type=str,
-                   help="Specify the full config-file path.")
+                   help="Specify the full config-file path.",
+                   default='config/config_default.yaml')
 parser.add_argument('--nowandb', action='store_true')
 args = parser.parse_args()
 
 # read the config file
+print(args.name)
 config = ReadConfig(args.name,args.config)
 
 # WandB – Initialize a new run
@@ -33,7 +36,7 @@ def main(config):
     #
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
-    print(f'Using cuda? {device=}')
+    print(f'Using cuda? {device}')
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     
     # Set random seeds and deterministic pytorch for reproducibility
@@ -56,12 +59,13 @@ def main(config):
     #
     batch_size = config.batch_size
     epochs = config.epochs
-    start_selfcon = epochs-config.epochs_selfcon
+    start_selfcon = config.epochs_selfcon
     track_selfcon = config.track_selfcon
     n_train = config.n_train
     n_test = config.n_test
+    use_augmentation = config.use_augmentation
     iterations = epochs*max(1,n_train//batch_size)
-    optimizer  = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
+    optimizer  = torch.optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     scheduler  = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=iterations)
 
     # WandB – wandb.watch() automatically fetches all layer dimensions, gradients, model parameters and logs them automatically to your dashboard.
@@ -75,6 +79,7 @@ def main(config):
         model.train()
         t1 = default_timer()
         train_l2 = 0
+        train_aug = 0
         train_sc = 0
         
         # training loop
@@ -82,7 +87,7 @@ def main(config):
             x,y = d['train']
             x,y = x.to(device),y.to(device)
 
-            # supervised training
+            #supervised training
             optimizer.zero_grad()
             out = model(x)
             # DO WE NEED TO NORMALIZE THE OUTPUT??
@@ -90,15 +95,23 @@ def main(config):
             loss = loss_fn(out.view(batch_size,-1),y.view(batch_size,-1))
             train_l2 += loss.item()
 
+            # augmentation via sub-sampling
+            if use_augmentation:
+                loss_aug = LossSelfconsistency(model,x,loss_fn,y)
+                loss += 0.5 * loss_aug
+                train_aug += loss_aug.item()
+
+
             # unsupervised training (selfconsistency constraint)
             if data.selfcon and (track_selfcon or epoch>=start_selfcon):
                 x_sc = d['selfcon'][0]
                 x_sc = x_sc.to(device)
                 #
-                loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
+                # loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
+                loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
                 if epoch>=start_selfcon:
-                    loss += loss_sc
-                #
+                    loss += 0.25 * loss_sc
+
                 train_sc += loss_sc.item()
 
             #
@@ -120,12 +133,13 @@ def main(config):
         # normalize losses
         train_l2 /= n_train
         train_sc /= n_train
+        train_aug /= n_train
         test_l2 /= n_test
 
         t2 = default_timer()
         if not args.nowandb:
             wandb.log({'time':t2-t1, 'train_l2':train_l2, 'test_l2':test_l2, 'train_selfcon':train_sc})
-        print(f'[{epoch+1:3}], time: {t2-t1:.3f}, train: {train_l2:.5f}, test: {test_l2:.5f}, train_sc: {train_sc:.5f}')
+        print(f'[{epoch+1:3}], time: {t2-t1:.3f}, train: {train_l2:.5f}, test: {test_l2:.5f}, train_aug: {train_aug:.5f}, train_sc: {train_sc:.5f}')
         
 #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
     torch.save(model.state_dict(), "model.h5")

@@ -74,7 +74,7 @@ def ReadConfig(name,config_file):
             ValueError('--name and --config flags are mutually exclusive!')
     
     yaml = YAML()
-    with open("config.yaml", "r") as f:
+    with open(config_file, "r") as f:
         config_user = yaml.load(f)
     # 
     config = DefaultConfig()

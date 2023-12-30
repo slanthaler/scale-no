@@ -147,7 +147,7 @@ class SelfconReader:
                         input_data.shape[3], dtype=torch.float32)
         # Filter out boundary conditions (each boundary condition --> 1 channel)
         x[:,0,:,:] = input_data[:,0,:,:]
-
+        # x = DarcyExtractBC(x,y)
         #
         del input_data
         
