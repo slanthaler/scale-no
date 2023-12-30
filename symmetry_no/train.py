@@ -63,7 +63,7 @@ def main(config):
     track_selfcon = config.track_selfcon
     n_train = config.n_train
     n_test = config.n_test
-    use_augmentation = config.use_augmentation
+    use_augmentation = config.augmentation_loss
     iterations = epochs*max(1,n_train//batch_size)
     optimizer  = torch.optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     scheduler  = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=iterations)
