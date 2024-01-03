@@ -1,0 +1,188 @@
+{
+    "os": "Linux-3.10.0-1160.53.1.el7.x86_64-x86_64-with-glibc2.17",
+    "python": "3.9.12",
+    "heartbeatAt": "2023-12-30T21:10:53.439930",
+    "startedAt": "2023-12-30T21:10:52.897509",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/central/groups/astuart/zongyi/symmetry-no/symmetry_no/train.py",
+    "codePathLocal": "train.py",
+    "codePath": "symmetry_no/train.py",
+    "git": {
+        "remote": "https://github.com/slanthaler/symmetry-no.git",
+        "commit": "15a94831344b8c907b8549da9c18a53a03df1572"
+    },
+    "email": "zongyili@caltech.edu",
+    "root": "/central/groups/astuart/zongyi/symmetry-no",
+    "host": "hpc-21-19.cm.cluster",
+    "username": "zongyili",
+    "executable": "/central/groups/esm/zongyili/anaconda3/bin/python3",
+    "cpu_count": 28,
+    "cpu_count_logical": 28,
+    "cpu_freq": {
+        "current": 2288.5825714285716,
+        "min": 1200.0,
+        "max": 3300.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2804.589,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2993.408,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2804.443,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2992.382,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2804.736,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 1597.705,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2805.175,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2900.683,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2808.251,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2997.656,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2804.15,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 1219.628,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2804.589,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 1200.0,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2804.296,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 1249.658,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2804.736,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 1400.097,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2803.71,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 1200.0,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2801.806,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 1200.0,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2804.15,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 1200.146,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2805.029,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 1549.951,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 2804.296,
+            "min": 1200.0,
+            "max": 3300.0
+        },
+        {
+            "current": 1200.0,
+            "min": 1200.0,
+            "max": 3300.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 49.9755859375,
+            "used": 25.15768051147461
+        }
+    },
+    "gpu": "Tesla P100-PCIE-16GB",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "Tesla P100-PCIE-16GB",
+            "memory_total": 17179869184
+        }
+    ],
+    "memory": {
+        "total": 251.6507339477539
+    }
+}
