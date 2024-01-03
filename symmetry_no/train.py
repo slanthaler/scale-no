@@ -5,7 +5,8 @@ import argparse
 from symmetry_no.data_loader import DarcyData
 from symmetry_no.config_helper import ReadConfig
 from symmetry_no.wandb_utilities import *
-from symmetry_no.fno2d import *
+from symmetry_no.models.fno2d import *
+from symmetry_no.models.fno2d_doubled import *
 from symmetry_no.selfconsistency import LossSelfconsistency
 
 # parse command line arguments
@@ -53,7 +54,7 @@ def main(config):
     width  = config.width
     depth  = config.depth
     #
-    model = FNO2d(modes1,modes2,width,depth).to(device)
+    model = FNO2d_doubled(modes1,modes2,width,depth).to(device)
     print('FNO2d parameter count: ',count_params(model))
 
     #
