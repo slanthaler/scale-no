@@ -1,0 +1,10 @@
+Using cuda? cuda
+Loading datasets...
+Traceback (most recent call last):
+  File "/central/groups/astuart/zongyi/symmetry-no/symmetry_no/train.py", line 149, in <module>
+    main(config)
+  File "/central/groups/astuart/zongyi/symmetry-no/symmetry_no/train.py", line 48, in main
+    data = DarcyData(config)
+  File "/central/groups/astuart/zongyi/symmetry-no/symmetry_no/data_loader.py", line 204, in __init__
+    cfig = config.use_augmentation.CropResize
+AttributeError: 'bool' object has no attribute 'CropResize'

@@ -1,0 +1,85 @@
+wandb_version: 1
+
+name:
+  desc: null
+  value: default
+seed:
+  desc: null
+  value: 42
+modes:
+  desc: null
+  value: 20
+width:
+  desc: null
+  value: 32
+depth:
+  desc: null
+  value: 4
+epochs:
+  desc: null
+  value: 200
+epochs_selfcon:
+  desc: null
+  value: 50
+learning_rate:
+  desc: null
+  value: '0.001'
+weight_decay:
+  desc: null
+  value: '0.0001'
+batch_size:
+  desc: null
+  value: 16
+use_augmentation:
+  desc: null
+  value: true
+grid_size:
+  desc: null
+  value: 128
+n_train:
+  desc: null
+  value: 1024
+n_test:
+  desc: null
+  value: 128
+train_data:
+  desc: null
+  value: darcy_BC_Nsamp1024_Ns128_alphacoeff1.00_alphag1.00.mat
+test_data:
+  desc: null
+  value: darcy_test_BC_Nsamp1024_Ns128_alphacoeff1.00_alphag1.00.mat
+selfcon_data:
+  desc: null
+  value: darcy_BC_Nsamp1024_Ns128_alphacoeff1.00_alphag1.00.mat
+track_selfcon:
+  desc: null
+  value: true
+n_selfcon:
+  desc: null
+  value: 1024
+_wandb:
+  desc: null
+  value:
+    python_version: 3.9.12
+    cli_version: 0.16.0
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1703970652.919442
+    t:
+      1:
+      - 1
+      - 41
+      - 55
+      2:
+      - 1
+      - 41
+      - 55
+      3:
+      - 16
+      - 23
+      4: 3.9.12
+      5: 0.16.0
+      8:
+      - 5
+      13: linux-x86_64

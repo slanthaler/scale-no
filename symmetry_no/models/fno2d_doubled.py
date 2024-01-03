@@ -46,8 +46,8 @@ class SpectralConv2d_doubled(nn.Module):
     def forward(self, x):
         batchsize, C, Nx, Ny = x.shape
         # Compute Fourier coeffcients up to factor of e^(- something constant)
-        x = torch.cat([x, -x.flip(dims=[-2])[..., 1:Nx - 1]], dim=-2)
-        x = torch.cat([x, -x.flip(dims=[-1])[..., 1:Ny - 1]], dim=-1)
+        x = torch.cat([x, -x.flip(dims=[-2])[..., 1:Nx - 1,:]], dim=-2)
+        x = torch.cat([x, -x.flip(dims=[-1])[..., :,1:Ny - 1]], dim=-1)
         x_ft = torch.fft.rfft2(x)
 
 

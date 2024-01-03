@@ -1,0 +1,29 @@
+2023-12-30 13:10:52,907 INFO    MainThread:1890 [wandb_setup.py:_flush():76] Current SDK version is 0.16.0
+2023-12-30 13:10:52,907 INFO    MainThread:1890 [wandb_setup.py:_flush():76] Configure stats pid to 1890
+2023-12-30 13:10:52,908 INFO    MainThread:1890 [wandb_setup.py:_flush():76] Loading settings from /home/zongyili/.config/wandb/settings
+2023-12-30 13:10:52,908 INFO    MainThread:1890 [wandb_setup.py:_flush():76] Loading settings from /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/settings
+2023-12-30 13:10:52,908 INFO    MainThread:1890 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2023-12-30 13:10:52,908 INFO    MainThread:1890 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'symmetry_no/train.py', 'program_abspath': '/central/groups/astuart/zongyi/symmetry-no/symmetry_no/train.py', 'program': '/central/groups/astuart/zongyi/symmetry-no/symmetry_no/train.py'}
+2023-12-30 13:10:52,908 INFO    MainThread:1890 [wandb_setup.py:_flush():76] Applying login settings: {'api_key': '***REDACTED***'}
+2023-12-30 13:10:52,908 INFO    MainThread:1890 [wandb_setup.py:_flush():76] Applying login settings: {'api_key': '***REDACTED***'}
+2023-12-30 13:10:52,908 INFO    MainThread:1890 [wandb_init.py:_log_setup():524] Logging user logs to /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/logs/debug.log
+2023-12-30 13:10:52,908 INFO    MainThread:1890 [wandb_init.py:_log_setup():525] Logging internal logs to /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/logs/debug-internal.log
+2023-12-30 13:10:52,908 INFO    MainThread:1890 [wandb_init.py:init():564] calling init triggers
+2023-12-30 13:10:52,909 INFO    MainThread:1890 [wandb_init.py:init():571] wandb.init called with sweep_config: {}
+config: {'name': 'default', 'seed': 42, 'modes': 20, 'width': 32, 'depth': 4, 'epochs': 200, 'epochs_selfcon': 50, 'learning_rate': 0.001, 'weight_decay': 0.0001, 'batch_size': 16, 'use_augmentation': True, 'grid_size': 128, 'n_train': 1024, 'n_test': 128, 'train_data': 'darcy_BC_Nsamp1024_Ns128_alphacoeff1.00_alphag1.00.mat', 'test_data': 'darcy_test_BC_Nsamp1024_Ns128_alphacoeff1.00_alphag1.00.mat', 'selfcon_data': 'darcy_BC_Nsamp1024_Ns128_alphacoeff1.00_alphag1.00.mat', 'track_selfcon': True, 'n_selfcon': 1024}
+2023-12-30 13:10:52,909 INFO    MainThread:1890 [wandb_init.py:init():614] starting backend
+2023-12-30 13:10:52,909 INFO    MainThread:1890 [wandb_init.py:init():618] setting up manager
+2023-12-30 13:10:52,913 INFO    MainThread:1890 [backend.py:_multiprocessing_setup():105] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2023-12-30 13:10:52,919 INFO    MainThread:1890 [wandb_init.py:init():624] backend started and connected
+2023-12-30 13:10:52,924 INFO    MainThread:1890 [wandb_init.py:init():716] updated telemetry
+2023-12-30 13:10:52,958 INFO    MainThread:1890 [wandb_init.py:init():749] communicating run to backend with 90.0 second timeout
+2023-12-30 13:10:53,293 INFO    MainThread:1890 [wandb_run.py:_on_init():2254] communicating current version
+2023-12-30 13:10:53,330 INFO    MainThread:1890 [wandb_run.py:_on_init():2263] got version response upgrade_message: "wandb version 0.16.1 is available!  To upgrade, please run:\n $ pip install wandb --upgrade"
+
+2023-12-30 13:10:53,330 INFO    MainThread:1890 [wandb_init.py:init():800] starting run threads in backend
+2023-12-30 13:11:07,149 INFO    MainThread:1890 [wandb_run.py:_console_start():2233] atexit reg
+2023-12-30 13:11:07,150 INFO    MainThread:1890 [wandb_run.py:_redirect():2088] redirect: wrap_raw
+2023-12-30 13:11:07,150 INFO    MainThread:1890 [wandb_run.py:_redirect():2153] Wrapping output streams.
+2023-12-30 13:11:07,150 INFO    MainThread:1890 [wandb_run.py:_redirect():2178] Redirects installed.
+2023-12-30 13:11:07,152 INFO    MainThread:1890 [wandb_init.py:init():841] run started, returning control to user process
+2023-12-30 13:11:44,191 WARNING MsgRouterThr:1890 [router.py:message_loop():77] message_loop has been closed

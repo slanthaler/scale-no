@@ -1,0 +1,206 @@
+2023-12-30 13:10:52,918 INFO    StreamThr :1924 [internal.py:wandb_internal():86] W&B internal server running at pid: 1924, started at: 2023-12-30 13:10:52.915396
+2023-12-30 13:10:52,952 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: status
+2023-12-30 13:10:52,954 INFO    WriterThread:1924 [datastore.py:open_for_write():85] open: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/run-5oktj53o.wandb
+2023-12-30 13:10:52,955 DEBUG   SenderThread:1924 [sender.py:send():380] send: header
+2023-12-30 13:10:52,961 DEBUG   SenderThread:1924 [sender.py:send():380] send: run
+2023-12-30 13:10:53,294 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: check_version
+2023-12-30 13:10:53,295 INFO    SenderThread:1924 [dir_watcher.py:__init__():211] watching files in: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files
+2023-12-30 13:10:53,295 INFO    SenderThread:1924 [sender.py:_start_run_threads():1124] run started: 5oktj53o with start time 1703970652.919442
+2023-12-30 13:10:53,295 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: check_version
+2023-12-30 13:10:53,375 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: run_start
+2023-12-30 13:10:53,412 DEBUG   HandlerThread:1924 [system_info.py:__init__():32] System info init
+2023-12-30 13:10:53,412 DEBUG   HandlerThread:1924 [system_info.py:__init__():47] System info init done
+2023-12-30 13:10:53,413 INFO    HandlerThread:1924 [system_monitor.py:start():194] Starting system monitor
+2023-12-30 13:10:53,413 INFO    SystemMonitor:1924 [system_monitor.py:_start():158] Starting system asset monitoring threads
+2023-12-30 13:10:53,414 INFO    HandlerThread:1924 [system_monitor.py:probe():214] Collecting system info
+2023-12-30 13:10:53,434 INFO    SystemMonitor:1924 [interfaces.py:start():190] Started cpu monitoring
+2023-12-30 13:10:53,436 INFO    SystemMonitor:1924 [interfaces.py:start():190] Started disk monitoring
+2023-12-30 13:10:53,438 INFO    SystemMonitor:1924 [interfaces.py:start():190] Started gpu monitoring
+2023-12-30 13:10:53,438 INFO    SystemMonitor:1924 [interfaces.py:start():190] Started memory monitoring
+2023-12-30 13:10:53,439 DEBUG   HandlerThread:1924 [system_info.py:probe():196] Probing system
+2023-12-30 13:10:53,456 INFO    SystemMonitor:1924 [interfaces.py:start():190] Started network monitoring
+2023-12-30 13:10:53,460 DEBUG   HandlerThread:1924 [system_info.py:_probe_git():181] Probing git
+2023-12-30 13:10:53,485 DEBUG   HandlerThread:1924 [system_info.py:_probe_git():189] Probing git done
+2023-12-30 13:10:53,485 DEBUG   HandlerThread:1924 [system_info.py:probe():244] Probing system done
+2023-12-30 13:10:53,485 DEBUG   HandlerThread:1924 [system_monitor.py:probe():223] {'os': 'Linux-3.10.0-1160.53.1.el7.x86_64-x86_64-with-glibc2.17', 'python': '3.9.12', 'heartbeatAt': '2023-12-30T21:10:53.439930', 'startedAt': '2023-12-30T21:10:52.897509', 'docker': None, 'cuda': None, 'args': (), 'state': 'running', 'program': '/central/groups/astuart/zongyi/symmetry-no/symmetry_no/train.py', 'codePathLocal': 'train.py', 'codePath': 'symmetry_no/train.py', 'git': {'remote': 'https://github.com/slanthaler/symmetry-no.git', 'commit': '15a94831344b8c907b8549da9c18a53a03df1572'}, 'email': 'zongyili@caltech.edu', 'root': '/central/groups/astuart/zongyi/symmetry-no', 'host': 'hpc-21-19.cm.cluster', 'username': 'zongyili', 'executable': '/central/groups/esm/zongyili/anaconda3/bin/python3', 'cpu_count': 28, 'cpu_count_logical': 28, 'cpu_freq': {'current': 2288.5825714285716, 'min': 1200.0, 'max': 3300.0}, 'cpu_freq_per_core': [{'current': 2804.589, 'min': 1200.0, 'max': 3300.0}, {'current': 2993.408, 'min': 1200.0, 'max': 3300.0}, {'current': 2804.443, 'min': 1200.0, 'max': 3300.0}, {'current': 2992.382, 'min': 1200.0, 'max': 3300.0}, {'current': 2804.736, 'min': 1200.0, 'max': 3300.0}, {'current': 1597.705, 'min': 1200.0, 'max': 3300.0}, {'current': 2805.175, 'min': 1200.0, 'max': 3300.0}, {'current': 2900.683, 'min': 1200.0, 'max': 3300.0}, {'current': 2808.251, 'min': 1200.0, 'max': 3300.0}, {'current': 2997.656, 'min': 1200.0, 'max': 3300.0}, {'current': 2804.15, 'min': 1200.0, 'max': 3300.0}, {'current': 1219.628, 'min': 1200.0, 'max': 3300.0}, {'current': 2804.589, 'min': 1200.0, 'max': 3300.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3300.0}, {'current': 2804.296, 'min': 1200.0, 'max': 3300.0}, {'current': 1249.658, 'min': 1200.0, 'max': 3300.0}, {'current': 2804.736, 'min': 1200.0, 'max': 3300.0}, {'current': 1400.097, 'min': 1200.0, 'max': 3300.0}, {'current': 2803.71, 'min': 1200.0, 'max': 3300.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3300.0}, {'current': 2801.806, 'min': 1200.0, 'max': 3300.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3300.0}, {'current': 2804.15, 'min': 1200.0, 'max': 3300.0}, {'current': 1200.146, 'min': 1200.0, 'max': 3300.0}, {'current': 2805.029, 'min': 1200.0, 'max': 3300.0}, {'current': 1549.951, 'min': 1200.0, 'max': 3300.0}, {'current': 2804.296, 'min': 1200.0, 'max': 3300.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3300.0}], 'disk': {'/': {'total': 49.9755859375, 'used': 25.15768051147461}}, 'gpu': 'Tesla P100-PCIE-16GB', 'gpu_count': 1, 'gpu_devices': [{'name': 'Tesla P100-PCIE-16GB', 'memory_total': 17179869184}], 'memory': {'total': 251.6507339477539}}
+2023-12-30 13:10:53,487 INFO    HandlerThread:1924 [system_monitor.py:probe():224] Finished collecting system info
+2023-12-30 13:10:53,487 INFO    HandlerThread:1924 [system_monitor.py:probe():227] Publishing system info
+2023-12-30 13:10:53,487 DEBUG   HandlerThread:1924 [system_info.py:_save_pip():52] Saving list of pip packages installed into the current environment
+2023-12-30 13:10:53,489 DEBUG   HandlerThread:1924 [system_info.py:_save_pip():68] Saving pip packages done
+2023-12-30 13:10:53,490 DEBUG   HandlerThread:1924 [system_info.py:_save_conda():75] Saving list of conda packages installed into the current environment
+2023-12-30 13:10:54,297 INFO    Thread-12 :1924 [dir_watcher.py:_on_file_created():271] file/dir created: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/requirements.txt
+2023-12-30 13:10:54,297 INFO    Thread-12 :1924 [dir_watcher.py:_on_file_created():271] file/dir created: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/conda-environment.yaml
+2023-12-30 13:11:07,077 DEBUG   HandlerThread:1924 [system_info.py:_save_conda():87] Saving conda packages done
+2023-12-30 13:11:07,100 INFO    HandlerThread:1924 [system_monitor.py:probe():229] Finished publishing system info
+2023-12-30 13:11:07,135 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: status_report
+2023-12-30 13:11:07,141 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: keepalive
+2023-12-30 13:11:07,141 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: keepalive
+2023-12-30 13:11:07,141 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: status_report
+2023-12-30 13:11:07,141 DEBUG   SenderThread:1924 [sender.py:send():380] send: files
+2023-12-30 13:11:07,142 INFO    SenderThread:1924 [sender.py:_save_file():1380] saving file wandb-metadata.json with policy now
+2023-12-30 13:11:07,143 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: stop_status
+2023-12-30 13:11:07,143 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: stop_status
+2023-12-30 13:11:07,150 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: internal_messages
+2023-12-30 13:11:07,294 DEBUG   SenderThread:1924 [sender.py:send():380] send: telemetry
+2023-12-30 13:11:07,299 INFO    Thread-12 :1924 [dir_watcher.py:_on_file_modified():288] file/dir modified: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/conda-environment.yaml
+2023-12-30 13:11:07,300 INFO    Thread-12 :1924 [dir_watcher.py:_on_file_created():271] file/dir created: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/wandb-metadata.json
+2023-12-30 13:11:07,300 INFO    Thread-12 :1924 [dir_watcher.py:_on_file_created():271] file/dir created: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/output.log
+2023-12-30 13:11:07,605 INFO    wandb-upload_0:1924 [upload_job.py:push():131] Uploaded file /tmp/tmpgekp5yzxwandb/ydw6cgw5-wandb-metadata.json
+2023-12-30 13:11:09,322 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: status_report
+2023-12-30 13:11:10,300 INFO    Thread-12 :1924 [dir_watcher.py:_on_file_modified():288] file/dir modified: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/output.log
+2023-12-30 13:11:14,322 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: status_report
+2023-12-30 13:11:19,323 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: status_report
+2023-12-30 13:11:22,143 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: stop_status
+2023-12-30 13:11:22,143 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: stop_status
+2023-12-30 13:11:22,150 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: internal_messages
+2023-12-30 13:11:25,294 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: status_report
+2023-12-30 13:11:26,306 INFO    Thread-12 :1924 [dir_watcher.py:_on_file_modified():288] file/dir modified: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/config.yaml
+2023-12-30 13:11:30,409 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: status_report
+2023-12-30 13:11:35,410 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: status_report
+2023-12-30 13:11:37,143 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: stop_status
+2023-12-30 13:11:37,143 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: stop_status
+2023-12-30 13:11:37,183 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: internal_messages
+2023-12-30 13:11:37,801 DEBUG   SenderThread:1924 [sender.py:send():380] send: exit
+2023-12-30 13:11:37,802 INFO    SenderThread:1924 [sender.py:send_exit():585] handling exit code: 1
+2023-12-30 13:11:37,802 INFO    SenderThread:1924 [sender.py:send_exit():587] handling runtime: 44
+2023-12-30 13:11:37,806 INFO    SenderThread:1924 [sender.py:_save_file():1380] saving file wandb-summary.json with policy end
+2023-12-30 13:11:37,806 INFO    SenderThread:1924 [sender.py:send_exit():593] send defer
+2023-12-30 13:11:37,806 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:37,806 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 0
+2023-12-30 13:11:37,807 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:37,807 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 0
+2023-12-30 13:11:37,807 INFO    SenderThread:1924 [sender.py:transition_state():613] send defer: 1
+2023-12-30 13:11:37,807 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:37,807 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 1
+2023-12-30 13:11:37,807 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:37,808 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 1
+2023-12-30 13:11:37,808 INFO    SenderThread:1924 [sender.py:transition_state():613] send defer: 2
+2023-12-30 13:11:37,808 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:37,808 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 2
+2023-12-30 13:11:37,808 INFO    HandlerThread:1924 [system_monitor.py:finish():203] Stopping system monitor
+2023-12-30 13:11:37,808 DEBUG   SystemMonitor:1924 [system_monitor.py:_start():172] Starting system metrics aggregation loop
+2023-12-30 13:11:37,808 DEBUG   SystemMonitor:1924 [system_monitor.py:_start():179] Finished system metrics aggregation loop
+2023-12-30 13:11:37,808 DEBUG   SystemMonitor:1924 [system_monitor.py:_start():183] Publishing last batch of metrics
+2023-12-30 13:11:37,824 INFO    HandlerThread:1924 [interfaces.py:finish():202] Joined cpu monitor
+2023-12-30 13:11:37,824 INFO    HandlerThread:1924 [interfaces.py:finish():202] Joined disk monitor
+2023-12-30 13:11:37,914 INFO    HandlerThread:1924 [interfaces.py:finish():202] Joined gpu monitor
+2023-12-30 13:11:37,914 INFO    HandlerThread:1924 [interfaces.py:finish():202] Joined memory monitor
+2023-12-30 13:11:37,915 INFO    HandlerThread:1924 [interfaces.py:finish():202] Joined network monitor
+2023-12-30 13:11:37,915 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:37,915 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 2
+2023-12-30 13:11:37,915 INFO    SenderThread:1924 [sender.py:transition_state():613] send defer: 3
+2023-12-30 13:11:37,915 DEBUG   SenderThread:1924 [sender.py:send():380] send: stats
+2023-12-30 13:11:37,916 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:37,916 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 3
+2023-12-30 13:11:37,916 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:37,916 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 3
+2023-12-30 13:11:37,916 INFO    SenderThread:1924 [sender.py:transition_state():613] send defer: 4
+2023-12-30 13:11:37,916 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:37,916 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 4
+2023-12-30 13:11:37,916 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:37,916 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 4
+2023-12-30 13:11:37,916 INFO    SenderThread:1924 [sender.py:transition_state():613] send defer: 5
+2023-12-30 13:11:37,917 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:37,917 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 5
+2023-12-30 13:11:37,917 DEBUG   SenderThread:1924 [sender.py:send():380] send: summary
+2023-12-30 13:11:37,917 INFO    SenderThread:1924 [sender.py:_save_file():1380] saving file wandb-summary.json with policy end
+2023-12-30 13:11:37,918 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:37,918 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 5
+2023-12-30 13:11:37,918 INFO    SenderThread:1924 [sender.py:transition_state():613] send defer: 6
+2023-12-30 13:11:37,918 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:37,918 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 6
+2023-12-30 13:11:37,918 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:37,918 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 6
+2023-12-30 13:11:37,918 INFO    SenderThread:1924 [sender.py:transition_state():613] send defer: 7
+2023-12-30 13:11:37,918 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: status_report
+2023-12-30 13:11:37,919 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:37,919 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 7
+2023-12-30 13:11:37,919 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:37,919 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 7
+2023-12-30 13:11:38,311 INFO    Thread-12 :1924 [dir_watcher.py:_on_file_created():271] file/dir created: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/wandb-summary.json
+2023-12-30 13:11:38,801 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: poll_exit
+2023-12-30 13:11:39,770 INFO    SenderThread:1924 [sender.py:transition_state():613] send defer: 8
+2023-12-30 13:11:39,770 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: poll_exit
+2023-12-30 13:11:39,771 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:39,771 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 8
+2023-12-30 13:11:39,771 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:39,772 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 8
+2023-12-30 13:11:39,772 INFO    SenderThread:1924 [job_builder.py:build():298] Attempting to build job artifact
+2023-12-30 13:11:39,773 INFO    SenderThread:1924 [job_builder.py:_get_source_type():428] is repo sourced job
+2023-12-30 13:11:39,801 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: poll_exit
+2023-12-30 13:11:40,275 INFO    SenderThread:1924 [job_builder.py:build():404] adding wandb-job metadata file
+2023-12-30 13:11:40,313 INFO    Thread-12 :1924 [dir_watcher.py:_on_file_modified():288] file/dir modified: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/output.log
+2023-12-30 13:11:40,327 INFO    SenderThread:1924 [sender.py:transition_state():613] send defer: 9
+2023-12-30 13:11:40,328 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: poll_exit
+2023-12-30 13:11:40,328 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:40,329 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 9
+2023-12-30 13:11:40,329 DEBUG   SenderThread:1924 [sender.py:send():380] send: artifact
+2023-12-30 13:11:40,802 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: poll_exit
+2023-12-30 13:11:41,228 INFO    wandb-upload_1:1924 [upload_job.py:push():89] Uploaded file /home/zongyili/.local/share/wandb/artifacts/staging/tmpk2my1xka
+2023-12-30 13:11:41,267 INFO    wandb-upload_0:1924 [upload_job.py:push():89] Uploaded file /home/zongyili/.local/share/wandb/artifacts/staging/tmpuijg2e4y
+2023-12-30 13:11:42,034 INFO    SenderThread:1924 [sender.py:send_artifact():1458] sent artifact job-https___github.com_slanthaler_symmetry-no.git_symmetry_no_train.py - {'id': 'QXJ0aWZhY3Q6Njc3NzMyNjY3', 'state': 'PENDING', 'artifactSequence': {'id': 'QXJ0aWZhY3RDb2xsZWN0aW9uOjEyNTk3NDUyOQ==', 'latestArtifact': {'id': 'QXJ0aWZhY3Q6Njc2NDY0MTEy', 'versionIndex': 4}}}
+2023-12-30 13:11:42,035 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:42,035 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 9
+2023-12-30 13:11:42,035 INFO    SenderThread:1924 [dir_watcher.py:finish():358] shutting down directory watcher
+2023-12-30 13:11:42,314 INFO    SenderThread:1924 [dir_watcher.py:finish():388] scan: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files
+2023-12-30 13:11:42,315 INFO    SenderThread:1924 [dir_watcher.py:finish():402] scan save: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/conda-environment.yaml conda-environment.yaml
+2023-12-30 13:11:42,315 INFO    SenderThread:1924 [dir_watcher.py:finish():402] scan save: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/wandb-metadata.json wandb-metadata.json
+2023-12-30 13:11:42,321 INFO    SenderThread:1924 [dir_watcher.py:finish():402] scan save: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/config.yaml config.yaml
+2023-12-30 13:11:42,322 INFO    SenderThread:1924 [dir_watcher.py:finish():402] scan save: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/requirements.txt requirements.txt
+2023-12-30 13:11:42,327 INFO    SenderThread:1924 [dir_watcher.py:finish():402] scan save: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/wandb-summary.json wandb-summary.json
+2023-12-30 13:11:42,328 INFO    SenderThread:1924 [dir_watcher.py:finish():402] scan save: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/output.log output.log
+2023-12-30 13:11:42,328 INFO    SenderThread:1924 [sender.py:transition_state():613] send defer: 10
+2023-12-30 13:11:42,328 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: poll_exit
+2023-12-30 13:11:42,329 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:42,329 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 10
+2023-12-30 13:11:42,329 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:42,330 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 10
+2023-12-30 13:11:42,330 INFO    SenderThread:1924 [file_pusher.py:finish():175] shutting down file pusher
+2023-12-30 13:11:42,635 INFO    wandb-upload_1:1924 [upload_job.py:push():131] Uploaded file /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/conda-environment.yaml
+2023-12-30 13:11:42,665 INFO    wandb-upload_0:1924 [upload_job.py:push():131] Uploaded file /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/config.yaml
+2023-12-30 13:11:42,711 INFO    wandb-upload_2:1924 [upload_job.py:push():131] Uploaded file /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/requirements.txt
+2023-12-30 13:11:42,714 INFO    wandb-upload_3:1924 [upload_job.py:push():131] Uploaded file /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/wandb-summary.json
+2023-12-30 13:11:42,723 INFO    wandb-upload_4:1924 [upload_job.py:push():131] Uploaded file /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/files/output.log
+2023-12-30 13:11:42,924 INFO    Thread-11 :1924 [sender.py:transition_state():613] send defer: 11
+2023-12-30 13:11:42,924 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:42,925 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 11
+2023-12-30 13:11:42,925 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:42,925 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 11
+2023-12-30 13:11:42,925 INFO    SenderThread:1924 [file_pusher.py:join():181] waiting for file pusher
+2023-12-30 13:11:42,925 INFO    SenderThread:1924 [sender.py:transition_state():613] send defer: 12
+2023-12-30 13:11:42,926 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:42,926 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 12
+2023-12-30 13:11:42,926 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:42,926 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 12
+2023-12-30 13:11:42,926 INFO    SenderThread:1924 [file_stream.py:finish():595] file stream finish called
+2023-12-30 13:11:43,012 INFO    SenderThread:1924 [file_stream.py:finish():599] file stream finish is done
+2023-12-30 13:11:43,012 INFO    SenderThread:1924 [sender.py:transition_state():613] send defer: 13
+2023-12-30 13:11:43,013 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:43,013 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 13
+2023-12-30 13:11:43,013 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:43,013 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 13
+2023-12-30 13:11:43,014 INFO    SenderThread:1924 [sender.py:transition_state():613] send defer: 14
+2023-12-30 13:11:43,014 DEBUG   SenderThread:1924 [sender.py:send():380] send: final
+2023-12-30 13:11:43,014 DEBUG   SenderThread:1924 [sender.py:send():380] send: footer
+2023-12-30 13:11:43,015 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: defer
+2023-12-30 13:11:43,015 INFO    HandlerThread:1924 [handler.py:handle_request_defer():172] handle defer: 14
+2023-12-30 13:11:43,015 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: defer
+2023-12-30 13:11:43,015 INFO    SenderThread:1924 [sender.py:send_request_defer():609] handle sender defer: 14
+2023-12-30 13:11:43,017 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: poll_exit
+2023-12-30 13:11:43,017 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: server_info
+2023-12-30 13:11:43,017 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: get_summary
+2023-12-30 13:11:43,017 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: sampled_history
+2023-12-30 13:11:43,018 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: internal_messages
+2023-12-30 13:11:43,018 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: job_info
+2023-12-30 13:11:43,019 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: poll_exit
+2023-12-30 13:11:43,019 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: server_info
+2023-12-30 13:11:43,098 DEBUG   SenderThread:1924 [sender.py:send_request():407] send_request: job_info
+2023-12-30 13:11:43,099 INFO    MainThread:1924 [wandb_run.py:_footer_history_summary_info():3760] rendering history
+2023-12-30 13:11:43,099 INFO    MainThread:1924 [wandb_run.py:_footer_history_summary_info():3792] rendering summary
+2023-12-30 13:11:43,099 INFO    MainThread:1924 [wandb_run.py:_footer_sync_info():3719] logging synced files
+2023-12-30 13:11:43,100 DEBUG   HandlerThread:1924 [handler.py:handle_request():146] handle_request: shutdown
+2023-12-30 13:11:43,100 INFO    HandlerThread:1924 [handler.py:finish():866] shutting down handler
+2023-12-30 13:11:44,019 INFO    WriterThread:1924 [datastore.py:close():294] close: /central/groups/astuart/zongyi/symmetry-no/symmetry_no/wandb/run-20231230_131052-5oktj53o/run-5oktj53o.wandb
+2023-12-30 13:11:44,101 INFO    SenderThread:1924 [sender.py:finish():1536] shutting down sender
+2023-12-30 13:11:44,101 INFO    SenderThread:1924 [file_pusher.py:finish():175] shutting down file pusher
+2023-12-30 13:11:44,101 INFO    SenderThread:1924 [file_pusher.py:join():181] waiting for file pusher
