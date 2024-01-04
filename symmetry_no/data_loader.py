@@ -184,8 +184,14 @@ class DarcyData:
         self.grid_size = config.grid_size
         self.batch_size = config.batch_size
 
+        if config.data_dir == None:
+            self.root_dir = ROOT_DIR
+        else:
+            self.root_dir = config.data_dir
+
         # load datasets
         self.train_data = DarcyReader(self.train_file,
+                                      root_dir = self.root_dir,
                                       n_samp=self.n_train,
                                       grid_size=self.grid_size)
         # update the grid_size
@@ -193,10 +199,12 @@ class DarcyData:
             self.grid_size = self.train_data.x.shape[-1]
 
         self.test_data = DarcyReader(self.test_file,
+                                     root_dir = self.root_dir,
                                      n_samp=self.n_test,
                                      grid_size=self.grid_size)
         if self.selfcon:
             self.selfcon_data = SelfconReader(self.selfcon_file,
+                                              root_dir = self. root_dir,
                                               n_samp=self.n_train,
                                               grid_size=self.grid_size)
 
