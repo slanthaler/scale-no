@@ -57,7 +57,7 @@ def main(config):
     width  = config.width
     depth  = config.depth
     #
-    model = SIN_NO2d(modes1,modes2,width,depth).to(device)
+    model = FNO2d(modes1,modes2,width,depth).to(device)
     print('FNO2d parameter count: ',count_params(model))
 
     #
