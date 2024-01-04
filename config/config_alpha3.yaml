@@ -1,6 +1,8 @@
 ---
 #
-name: 'default'
+name: 'alpha3'
+
+run_name: 'alpha3_baseline'
 
 # fno2d
 modes: 20
@@ -26,5 +28,7 @@ test_data: 'darcy_test_BC_Nsamp1024_Ns128_alphacoeff3.00_alphag3.00.mat'
 selfcon_data: 'darcy_BC_Nsamp1024_Ns128_alphacoeff3.00_alphag3.00.mat'
 
 #
-augmentation_loss: True
+augmentation_loss:
+selfcon_loss:
+
 use_augmentation:

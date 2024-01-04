@@ -1,6 +1,8 @@
 ---
 #
-name: 'default'
+name: 'alpha6_aug'
+
+run_name: 'alpha6_aug'
 
 # fno2d
 modes: 20
@@ -21,10 +23,12 @@ epochs_selfcon: 50 # now epochs_selfcon is the epoch to start self-consistency l
 
 # datasets
 data_dir: '/central/groups/astuart/slanth/SymmetryNO/Dirichlet_bc_nonzero/data'
-train_data: 'darcy_BC_Nsamp1024_Ns128_alphacoeff3.00_alphag3.00.mat'
-test_data: 'darcy_test_BC_Nsamp1024_Ns128_alphacoeff3.00_alphag3.00.mat'
-selfcon_data: 'darcy_BC_Nsamp1024_Ns128_alphacoeff3.00_alphag3.00.mat'
+train_data: 'darcy_BC_Nsamp1024_Ns128_alphacoeff6.00_alphag6.00.mat'
+test_data: 'darcy_test_BC_Nsamp1024_Ns128_alphacoeff6.00_alphag6.00.mat'
+selfcon_data: 'darcy_BC_Nsamp1024_Ns128_alphacoeff6.00_alphag6.00.mat'
 
 #
-augmentation_loss: True
+augmentation_loss: 1.0
+selfcon_loss:
+
 use_augmentation:
