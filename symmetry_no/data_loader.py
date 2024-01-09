@@ -179,7 +179,11 @@ class DarcyData:
     def __init__(self, config):
         # Load training and test datasets
         self.train_file = config.train_data
-        self.test_file = config.test_data
+        if isinstance(config.test_data,list):
+            self.test_files = config.test_data
+        else:
+            self.test_files = [config.test_data]
+
         if config.selfcon_data:
             self.selfcon = True
             self.selfcon_file = config.selfcon_data
@@ -200,9 +204,11 @@ class DarcyData:
         if self.grid_size<0:
             self.grid_size = self.train_data.x.shape[-1]
 
-        self.test_data = DarcyReader(self.test_file,
-                                     n_samp=self.n_test,
-                                     grid_size=self.grid_size)
+        self.test_data = []
+        for test_file in self.test_files:
+            self.test_data.append(DarcyReader(test_file,
+                                              n_samp=self.n_test,
+                                              grid_size=self.grid_size))
         if self.selfcon:
             self.selfcon_data = SelfconReader(self.selfcon_file,
                                               n_samp=self.n_train,
@@ -234,11 +240,15 @@ class DarcyData:
         )
 
         # test data
-        self.test_db = AugmentedTensorDataset(
-            self.test_data.x,
-            self.test_data.y,
-            transform_xy=None
-        )
+        self.test_dbs = []
+        for test_data in self.test_data:
+            self.test_dbs.append(
+                AugmentedTensorDataset(
+                    test_data.x,
+                    test_data.y,
+                    transform_xy=None
+                    )
+                )
 
         # unsupervised training data (if available)
         if self.selfcon:
@@ -262,8 +272,12 @@ class DarcyData:
         )
 
         # test loader
-        self.test_loader = torch.utils.data.DataLoader(
-            self.test_db,
-            batch_size=self.batch_size,
-            shuffle=False
-        )
+        self.test_loaders = []
+        for test_db in self.test_dbs:
+            self.test_loaders.append(
+                torch.utils.data.DataLoader(
+                    test_db,
+                    batch_size=self.batch_size,
+                    shuffle=False
+                )
+            )
