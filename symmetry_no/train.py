@@ -23,12 +23,15 @@ parser.add_argument('-c', "--config",
 parser.add_argument('--nowandb', action='store_true')
 args = parser.parse_args()
 
+# set wandb to false if nowandb is set
+args.wandb = not args.nowandb
+
 # read the config file
 print(args.name)
 config = ReadConfig(args.name,args.config)
 
 # WandB – Initialize a new run
-if not args.nowandb:
+if args.wandb:
     wandb.login(key=get_wandb_api_key())
     wandb.init(project="Symmetry-NO", config=config)
 
@@ -70,7 +73,7 @@ def main(config):
 
     # WandB – wandb.watch() automatically fetches all layer dimensions, gradients, model parameters and logs them automatically to your dashboard.
     # Using log="all" log histograms of parameter values in addition to gradients
-    if not args.nowandb:
+    if args.wandb:
        wandb.watch(model, log_freq=20, log="all")
 
     loss_fn = LpLoss(size_average=False)
@@ -137,12 +140,13 @@ def main(config):
         test_l2 /= n_test
 
         t2 = default_timer()
-        if not args.nowandb:
+        if args.wandb:
             wandb.log({'time':t2-t1, 'train_l2':train_l2, 'test_l2':test_l2, 'train_selfcon':train_sc})
         print(f'[{epoch+1:3}], time: {t2-t1:.3f}, train: {train_l2:.5f}, test: {test_l2:.5f}, train_aug: {train_aug:.5f}, train_sc: {train_sc:.5f}')
         
 #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
-    torch.save(model.state_dict(), "model.h5")
+    if args.wandb:
+        torch.save(model.state_dict(), "model.h5")
     wandb.save('model.h5')
 #
 if __name__ == '__main__':
