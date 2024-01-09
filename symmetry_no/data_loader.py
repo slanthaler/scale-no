@@ -30,8 +30,7 @@ class DarcyReader:
                  mat_file, 
                  root_dir=ROOT_DIR + '/data/', 
                  n_samp=None, 
-                 grid_size=None, 
-                 extract_BC_from_y=True):
+                 grid_size=None):
         """
         Args:
             mat_file (string): Path to the mat file (Matlab v7.3).
@@ -55,14 +54,13 @@ class DarcyReader:
         mat = load_mat_v73(self.filepath)
         self.x, self.y = self.unpack_mat(mat, 
                                          n_samp=n_samp, 
-                                         grid_size=grid_size,
-                                         extract_BC_from_y=extract_BC_from_y)
+                                         grid_size=grid_size)
         
     def __len__(self):
         return len(self.x)
 
     
-    def unpack_mat(self,mat,n_samp=None,grid_size=None,extract_BC_from_y=True):
+    def unpack_mat(self,mat,n_samp=None,grid_size=None):
         """
         Unpack the mat-structure (obtained by reading in a .mat file).
         mat (dict): dictionary from .mat file
@@ -85,10 +83,7 @@ class DarcyReader:
                         input_data.shape[3], dtype=torch.float32)
         # Filter out boundary conditions (each boundary condition --> 1 channel)
         x[:,0,:,:] = input_data[:,0,:,:]
-        if extract_BC_from_y:
-            x = DarcyExtractBC(x,y)
-        else:
-            x = DarcyExtractBC(x,input_data[:,1:,:,:])
+        x = DarcyExtractBC(x,y)
 
         #
         del input_data
@@ -132,7 +127,9 @@ class SelfconReader:
         
         # load data
         mat = load_mat_v73(self.filepath)
-        self.x = self.unpack_mat(mat, n_samp=n_samp, grid_size=grid_size)
+        self.x = self.unpack_mat(mat, 
+                                 n_samp=n_samp, 
+                                 grid_size=grid_size) 
         
     def __len__(self):
         return len(self.x)
@@ -158,7 +155,7 @@ class SelfconReader:
                         input_data.shape[3], dtype=torch.float32)
         # Filter out boundary conditions (each boundary condition --> 1 channel)
         x[:,0,:,:] = input_data[:,0,:,:]
-        # x = DarcyExtractBC(x,y)
+        x = DarcyExtractBC(x,input_data[:,1:,:,:])
         #
         del input_data
         
