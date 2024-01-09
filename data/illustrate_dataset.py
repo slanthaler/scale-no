@@ -29,8 +29,7 @@ args = parser.parse_args()
 
 # load training and test datasets
 print('Loading datasets...')
-extract_BC_from_y = True
-data = DarcyReader(args.filename, extract_BC_from_y=extract_BC_from_y)
+data = DarcyReader(args.filename)
 
 # create folder for plots
 os.mkdir(args.folder) if not os.path.exists(args.folder) else None
