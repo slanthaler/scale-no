@@ -41,9 +41,7 @@ filename = os.path.basename(args.filename)
 print('Plotting samples...')
 
 # get a random index set
-idx_set = np.array([])
-while len(idx_set) < args.plots:
-    idx_set = np.unique(np.random.randint(0, data.x.shape[0], 10*args.plots))[0:args.plots]
+idx_set = np.random.choice(data.x.shape[0], args.plots, replace=False)
 x_tags = ['Pressure', 'BC1', 'BC2', 'BC3', 'BC4']
 
 for i in idx_set:

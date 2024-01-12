@@ -12,29 +12,6 @@ from symmetry_no.models.fno2d_doubled import *
 from symmetry_no.models.sin_no import *
 from symmetry_no.selfconsistency import LossSelfconsistency
 
-# parse command line arguments
-# (need to specify <name> of run = config_<name>.yaml)
-parser = argparse.ArgumentParser()
-# group = parser.add_mutually_exclusive_group()
-parser.add_argument('-n', "--name",
-                    type=str,
-                    help="Specify name of run (requires: config_<name>.yaml in ./config folder).",
-                   default='default')
-parser.add_argument('-c', "--config",
-                   type=str,
-                   help="Specify the full config-file path.",
-                   default='config/config_default.yaml')
-parser.add_argument('--nowandb', action='store_true')
-args = parser.parse_args()
-
-# read the config file
-print(args.name)
-config = ReadConfig(args.name,args.config)
-
-# WandB – Initialize a new run
-if not args.nowandb:
-    wandb.login(key=get_wandb_api_key())
-    wandb.init(project="Symmetry-NO", config=config)
 
 def main(config):
     #
@@ -74,7 +51,7 @@ def main(config):
 
     # WandB – wandb.watch() automatically fetches all layer dimensions, gradients, model parameters and logs them automatically to your dashboard.
     # Using log="all" log histograms of parameter values in addition to gradients
-    if not args.nowandb:
+    if args.wandb:
        wandb.watch(model, log_freq=20, log="all")
 
     loss_fn = LpLoss(size_average=False)
@@ -125,14 +102,15 @@ def main(config):
 
         #
         model.eval()
-        test_l2 = 0.0
+        test_l2 = np.zeros((len(data.test_loaders),))
         with torch.no_grad():
-            for x, y in data.test_loader:
-                x, y = x.to(device), y.to(device)
+            for i,test_loader in enumerate(data.test_loaders):
+                for x, y in test_loader:
+                    x, y = x.to(device), y.to(device)
 
-                out = model(x)
-                # DO WE NEED TO NORMALIZE THE OUTPUT??
-                test_l2 += loss_fn(out.view(batch_size,-1), y.view(batch_size,-1)).item()
+                    out = model(x)
+                    # DO WE NEED TO NORMALIZE THE OUTPUT??
+                    test_l2[i] += loss_fn(out.view(batch_size,-1), y.view(batch_size,-1)).item()
 
         # normalize losses
         train_l2 /= n_train
@@ -141,13 +119,49 @@ def main(config):
         test_l2 /= n_test
 
         t2 = default_timer()
-        if not args.nowandb:
-            wandb.log({'time':t2-t1, 'train_l2':train_l2, 'test_l2':test_l2, 'train_selfcon':train_sc})
-        print(f'[{epoch+1:3}], time: {t2-t1:.3f}, train: {train_l2:.5f}, test: {test_l2:.5f}, train_aug: {train_aug:.5f}, train_sc: {train_sc:.5f}')
+        if args.wandb:
+            wandb.log({'time':t2-t1, 'train_l2':train_l2, 'train_selfcon':train_sc})
+            wandb.log({f"test_l2/loss-{ii}": loss for ii, loss in enumerate(test_l2)})
+        test_losses = " / ".join([f"{val:.5f}" for val in test_l2])
+        print(f'[{epoch+1:3}], time: {t2-t1:.3f}, train: {train_l2:.5f}, test: {test_losses}, train_aug: {train_aug:.5f}, train_sc: {train_sc:.5f}', flush=True)
         
 #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
-    torch.save(model.state_dict(), "model.h5")
+    if args.wandb:
+        torch.save(model.state_dict(), "model.h5")
     wandb.save('model.h5')
+
+
+
 #
 if __name__ == '__main__':
+    # parse command line arguments
+    # (need to specify <name> of run = config_<name>.yaml)
+    parser = argparse.ArgumentParser()
+    # group = parser.add_mutually_exclusive_group()
+    parser.add_argument('-n', "--name",
+                        type=str,
+                        help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
+    parser.add_argument('-c', "--config",
+                    type=str,
+                    help="Specify the full config-file path.")
+    parser.add_argument('--nowandb', action='store_true')
+    args = parser.parse_args()
+
+    # set wandb to false if nowandb is set
+    args.wandb = not args.nowandb
+
+    # read the config file
+    config = ReadConfig(args.name,args.config)
+
+    # WandB – Initialize a new run
+    if args.wandb:
+        wandb.login(key=get_wandb_api_key())
+        wandb.init(project="Symmetry-NO", config=config)
+    
+    #
+    print('Command line inputs: --')
+    print('Config name: ',args.name)
+    print('Config file: ',args.config, flush=True)
+
+    # run the main training loop
     main(config)
