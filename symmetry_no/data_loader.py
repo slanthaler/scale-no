@@ -26,7 +26,11 @@ class DarcyReader:
     Helper class to read in Darcy dataset.
     """
 
-    def __init__(self, mat_file, root_dir=ROOT_DIR + '/data/', n_samp=None, grid_size=None):
+    def __init__(self, 
+                 mat_file, 
+                 root_dir=ROOT_DIR + '/data/', 
+                 n_samp=None, 
+                 grid_size=None):
         """
         Args:
             mat_file (string): Path to the mat file (Matlab v7.3).
@@ -48,7 +52,9 @@ class DarcyReader:
         
         # load data
         mat = load_mat_v73(self.filepath)
-        self.x, self.y = self.unpack_mat(mat, n_samp=n_samp, grid_size=grid_size)
+        self.x, self.y = self.unpack_mat(mat, 
+                                         n_samp=n_samp, 
+                                         grid_size=grid_size)
         
     def __len__(self):
         return len(self.x)
@@ -121,7 +127,9 @@ class SelfconReader:
         
         # load data
         mat = load_mat_v73(self.filepath)
-        self.x = self.unpack_mat(mat, n_samp=n_samp, grid_size=grid_size)
+        self.x = self.unpack_mat(mat, 
+                                 n_samp=n_samp, 
+                                 grid_size=grid_size) 
         
     def __len__(self):
         return len(self.x)
@@ -147,7 +155,7 @@ class SelfconReader:
                         input_data.shape[3], dtype=torch.float32)
         # Filter out boundary conditions (each boundary condition --> 1 channel)
         x[:,0,:,:] = input_data[:,0,:,:]
-        # x = DarcyExtractBC(x,y)
+        x = DarcyExtractBC(x,input_data[:,1:,:,:])
         #
         del input_data
         
@@ -171,7 +179,11 @@ class DarcyData:
     def __init__(self, config):
         # Load training and test datasets
         self.train_file = config.train_data
-        self.test_file = config.test_data
+        if isinstance(config.test_data,list):
+            self.test_files = config.test_data
+        else:
+            self.test_files = [config.test_data]
+
         if config.selfcon_data:
             self.selfcon = True
             self.selfcon_file = config.selfcon_data
@@ -198,10 +210,13 @@ class DarcyData:
         if self.grid_size<0:
             self.grid_size = self.train_data.x.shape[-1]
 
-        self.test_data = DarcyReader(self.test_file,
-                                     root_dir = self.root_dir,
-                                     n_samp=self.n_test,
-                                     grid_size=self.grid_size)
+
+        self.test_data = []
+        for test_file in self.test_files:
+            self.test_data.append(DarcyReader(test_file,
+                                              root_dir = self.root_dir,
+                                              n_samp=self.n_test,
+                                              grid_size=self.grid_size))
         if self.selfcon:
             self.selfcon_data = SelfconReader(self.selfcon_file,
                                               root_dir = self. root_dir,
@@ -234,11 +249,15 @@ class DarcyData:
         )
 
         # test data
-        self.test_db = AugmentedTensorDataset(
-            self.test_data.x,
-            self.test_data.y,
-            transform_xy=None
-        )
+        self.test_dbs = []
+        for test_data in self.test_data:
+            self.test_dbs.append(
+                AugmentedTensorDataset(
+                    test_data.x,
+                    test_data.y,
+                    transform_xy=None
+                    )
+                )
 
         # unsupervised training data (if available)
         if self.selfcon:
@@ -262,8 +281,12 @@ class DarcyData:
         )
 
         # test loader
-        self.test_loader = torch.utils.data.DataLoader(
-            self.test_db,
-            batch_size=self.batch_size,
-            shuffle=False
-        )
+        self.test_loaders = []
+        for test_db in self.test_dbs:
+            self.test_loaders.append(
+                torch.utils.data.DataLoader(
+                    test_db,
+                    batch_size=self.batch_size,
+                    shuffle=False
+                )
+            )
