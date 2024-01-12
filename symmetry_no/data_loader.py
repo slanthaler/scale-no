@@ -201,7 +201,7 @@ class DarcyData:
                                       n_samp=self.n_train,
                                       grid_size=self.grid_size)
         # update the grid_size
-        if self.grid_size<0:
+        if not self.grid_size or self.grid_size<0:
             self.grid_size = self.train_data.x.shape[-1]
 
         self.test_data = []

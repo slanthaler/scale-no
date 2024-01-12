@@ -44,7 +44,7 @@ def DefaultConfig():
                         'size_min': 32},
             Flip={'p': 0.5}
         ),
-        grid_size=128,
+        grid_size=None,
         n_train=16,
         n_test=8,
         # datasets
@@ -78,6 +78,13 @@ def ReadConfig(name,config_file):
     yaml = YAML()
     with open(config_file, "r") as f:
         config_user = yaml.load(f)
+
+    if 'grid_size' in config_user.keys() and config_user['grid_size']>0:
+        warn_string = '********\nWARNING: grid_size in config file is no longer supported!\n' + \
+                      f'         From config file: grid_size={config_user["grid_size"]}.\n' + \
+                       '         Using grid_size=None instead.\n********\n'
+        print(warn_string)
+
     # 
     config = DefaultConfig()
     for key in config_user:
