@@ -53,6 +53,8 @@ def DefaultConfig():
         selfcon_data='',
         # track selfconsistency loss?
         track_selfcon=True,
+        # use data augmentation by subsampling?
+        augmentation_loss=True,
     )
     return config
 
@@ -70,8 +72,8 @@ def ReadConfig(name,config_file):
     if name:           
         if config_file:
             ValueError('--name and --config flags are mutually exclusive!')
+        #
         config_file = ROOT_DIR + '/config/config_' + name + '.yaml'
-
     
     yaml = YAML()
     with open(config_file, "r") as f:
