@@ -132,11 +132,9 @@ def main(config):
         
 #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
     torch.save(model.state_dict(), "model.h5")
-    np.save("loss_tracker.npz", loss_tracker)
+    np.save("loss_tracker.npy", loss_tracker)
     if args.wandb:
         wandb.save('model.h5')
-
-
 
 #
 if __name__ == '__main__':
