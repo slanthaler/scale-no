@@ -51,7 +51,10 @@ def main(config):
        wandb.watch(model, log_freq=20, log="all")
 
     loss_fn = LpLoss(size_average=False)
+    loss_tracker = {}
     for epoch in range(1, epochs + 1): # config.epochs
+        #
+        loss_tracker[epoch] = {}
         #
         model.train()
         t1 = default_timer()
@@ -114,6 +117,12 @@ def main(config):
         train_aug /= n_train
         test_l2 /= n_test
 
+        # track losses
+        loss_tracker[epoch]['train_l2'] = train_l2
+        loss_tracker[epoch]['train_sc'] = train_sc
+        loss_tracker[epoch]['train_aug'] = train_aug
+        loss_tracker[epoch]['test_l2'] = test_l2
+
         t2 = default_timer()
         if args.wandb:
             wandb.log({'time':t2-t1, 'train_l2':train_l2, 'test_l2':test_l2, 'train_selfcon':train_sc})
@@ -121,9 +130,10 @@ def main(config):
         print(f'[{epoch+1:3}], time: {t2-t1:.3f}, train: {train_l2:.5f}, test: {test_losses}, train_aug: {train_aug:.5f}, train_sc: {train_sc:.5f}')
         
 #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
+    torch.save(model.state_dict(), "model.h5")
+    np.save("loss_tracker.npz", loss_tracker)
     if args.wandb:
-        torch.save(model.state_dict(), "model.h5")
-    wandb.save('model.h5')
+        wandb.save('model.h5')
 
 
 
