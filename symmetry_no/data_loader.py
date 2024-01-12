@@ -84,7 +84,7 @@ class DarcyReader:
         # Filter out boundary conditions (each boundary condition --> 1 channel)
         x[:,0,:,:] = input_data[:,0,:,:]
         x = DarcyExtractBC(x,y)
-
+        print(x.shape)
         #
         del input_data
         

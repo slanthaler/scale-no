@@ -92,7 +92,8 @@ class FNO2d(nn.Module):
         self.in_channel = in_channel
         self.out_channel = out_channel
         
-        self.p = nn.Linear(self.in_channel, self.width) # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
+        #self.p = nn.Linear(self.in_channel, self.width) # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
+        self.p = MLP(self.in_channel, self.width, self.width)
 
         self.conv = []
         self.mlp = []
@@ -109,10 +110,13 @@ class FNO2d(nn.Module):
         self.q = MLP(self.width, self.out_channel, self.width * 4) # output channel is 1: u(x, y)
 
     def forward(self, x):
+
+        std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
+        x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
+
         grid = self.get_grid(x.shape, x.device)
         x = torch.cat((x, grid), dim=1) # 1 is the channel dimension
-        x = self.p(x.permute(0,2,3,1)).permute(0,3,1,2)
-        #x = x.permute(0, 3, 1, 2)
+        x = self.p(x)
 
         for i in range(self.depth):
             x1 = self.conv[i](x)
@@ -122,7 +126,8 @@ class FNO2d(nn.Module):
             x = F.gelu(x)
 
         x = self.q(x)
-        #x = x.permute(0, 2, 3, 1)
+        x = x*std
+        del std
         return x
     
     def get_grid(self, shape, device):

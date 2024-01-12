@@ -2,14 +2,12 @@ import sys
 import wandb
 import argparse
 
-sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
+# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
 
 from symmetry_no.data_loader import DarcyData
 from symmetry_no.config_helper import ReadConfig
 from symmetry_no.wandb_utilities import *
 from symmetry_no.models.fno2d import *
-from symmetry_no.models.fno2d_doubled import *
-from symmetry_no.models.sin_no import *
 from symmetry_no.selfconsistency import LossSelfconsistency
 
 
@@ -79,7 +77,7 @@ def main(config):
             # augmentation via sub-sampling
             if use_augmentation:
                 loss_aug = LossSelfconsistency(model,x,loss_fn,y)
-                loss += 0.5 * loss_aug
+                loss += 1.0 * loss_aug
                 train_aug += loss_aug.item()
 
 
@@ -91,7 +89,7 @@ def main(config):
                 # loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
                 loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
                 if epoch>=start_selfcon:
-                    loss += 0.25 * loss_sc
+                    loss += 0.1 * loss_sc
 
                 train_sc += loss_sc.item()
 
@@ -140,6 +138,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
+                        default='multiple_test',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                     type=str,
