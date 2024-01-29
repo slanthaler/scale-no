@@ -46,18 +46,21 @@ class SpectralConv2d_doubled(nn.Module):
     def forward(self, x):
         batchsize, C, Nx, Ny = x.shape
         # Compute Fourier coeffcients up to factor of e^(- something constant)
-        x = torch.cat([x, -x.flip(dims=[-2])[..., 1:Nx - 1,:]], dim=-2)
-        x = torch.cat([x, -x.flip(dims=[-1])[..., :,1:Ny - 1]], dim=-1)
+        sub = 8
+        x = torch.cat([x, -x.flip(dims=[-2])[..., 1:Nx-1:sub, :]], dim=-2)
+        x = torch.cat([x, -x.flip(dims=[-1])[..., :, 1:Ny-1:sub]], dim=-1)
         x_ft = torch.fft.rfft2(x)
+
+        m1 = np.minimum(self.modes1, Nx//2)
+        m2 = np.minimum(self.modes2, Ny//2)
 
 
         # Multiply relevant Fourier modes
         out_ft = torch.zeros(batchsize, self.out_channels, x.size(-2), x.size(-1) // 2 + 1, dtype=torch.cfloat,
                              device=x.device)
-        out_ft[:, :, :self.modes1, :self.modes2] = \
-            self.compl_mul2d(x_ft[:, :, :self.modes1, :self.modes2], self.weights1)
-        out_ft[:, :, -self.modes1:, :self.modes2] = \
-            self.compl_mul2d(x_ft[:, :, -self.modes1:, :self.modes2], self.weights2)
+
+        out_ft[:, :, :m1, :m2] = self.compl_mul2d(x_ft[:, :, :m1, :m2], self.weights1[..., :m1, :m2])
+        out_ft[:, :, -m1:, :m2] = self.compl_mul2d(x_ft[:, :, -m1:, :m2], self.weights2[..., -m1:, :m2])
 
         # Return to physical space
         x = torch.fft.irfft2(out_ft, s=(x.size(-2), x.size(-1)))
@@ -119,10 +122,10 @@ class FNO2d_doubled(nn.Module):
         #
         self.q = MLP(self.width, self.out_channel, self.width * 4)  # output channel is 1: u(x, y)
 
-    def forward(self, x):
+    def forward(self, x, re=None):
 
-        std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
-        x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
+        # std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
+        # x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
 
         grid = self.get_grid(x.shape, x.device)
         x = torch.cat((x, grid), dim=1) # 1 is the channel dimension
@@ -136,8 +139,8 @@ class FNO2d_doubled(nn.Module):
             x = F.gelu(x)
 
         x = self.q(x)
-        x = x*std
-        del std
+        # x = x*std
+        # del std
         return x
 
     def get_grid(self, shape, device):

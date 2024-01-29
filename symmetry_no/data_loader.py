@@ -290,3 +290,230 @@ class DarcyData:
                     shuffle=False
                 )
             )
+
+
+class NSReader:
+    """
+    Helper class to read in Darcy dataset.
+    """
+
+    def __init__(self,
+                 mat_file,
+                 root_dir=ROOT_DIR + '/data/',
+                 N=None,
+                 order = "front",
+                 S=None, T=None, sub_s=None, sub_t=None,
+                 Re = 1):
+        """
+        Args:
+            mat_file (string): Path to the mat file (Matlab v7.3).
+            root_dir (string): Directory with the data.
+            n_samp (int): number of samples to extract
+            grid_size (int): desired grid size of the output (grid_size==None: keep original)
+        """
+        self.mat_file = mat_file
+        self.root_dir = root_dir
+        self.N = N
+        self.T = T
+        self.S = S
+        self.sub_t = sub_t
+        self.sub_s = sub_s
+        self.order = order
+
+        if self.root_dir:
+            self.filepath = root_dir + '/' + mat_file
+        else:
+            self.filepath = mat_file
+
+        assert os.path.isfile(self.filepath), f'Data file not found! ({self.filepath}).'
+
+        # load data
+        if order == "front":
+            data = torch.load(self.filepath)[:, ::sub_t, ::sub_s, ::sub_s][:N, :T+1, :S, :S]
+        else:
+            data = torch.load(self.filepath)[:, ::sub_t, ::sub_s, ::sub_s][-N:, :T+1, :S, :S]
+
+        self.x, self.y = self.unpack_mat(data)
+
+        if Re == None:
+            Re = 1
+        self.re = Re * torch.ones(self.x.shape[0], 1, requires_grad=False)
+
+
+        def __len__(self):
+            return len(self.x)
+
+
+    def unpack_mat(self, data, n_samp=None, grid_size=None):
+        """
+
+        """
+        # massage the input data
+        u0 = data[:, 0:self.T].reshape(self.N*self.T, self.S, self.S)
+        u1 = data[:, 1:self.T+1].reshape(self.N*self.T, self.S, self.S)
+
+        nchannel = 5  # 1 coefficient + 4 BC
+        n_samp = self.N * self.T
+        x = torch.zeros(n_samp,
+                        nchannel,
+                        self.S,
+                        self.S, dtype=torch.float32)
+        # Filter out boundary conditions (each boundary condition --> 1 channel)
+        x[:, 0, :, :] = u0
+
+        x = DarcyExtractBC(x, u1)
+        y = u1
+        print(x.shape, y.shape)
+
+        return x, y
+
+
+
+class NSData:
+    """
+    Set up train, test and selfconsistency loaders for Navier Stokes experiment.
+    """
+
+    def __init__(self, config):
+        # Load training and test datasets
+        self.train_file = config.train_data
+        self.T = config.T
+        self.S = config.S
+        self.sub_t = config.sub_t
+        self.sub_s = config.sub_s
+
+        self.grid_size = self.S
+
+        if isinstance(config.test_data, list):
+            self.test_files = config.test_data
+        else:
+            self.test_files = [config.test_data]
+
+        if config.selfcon_data:
+            self.selfcon = True
+            self.selfcon_file = config.selfcon_data
+        else:
+            self.selfcon = False
+            self.selfcon_file = None
+
+        self.n_train = config.n_train
+        self.n_test = config.n_test
+        self.batch_size = config.batch_size
+
+        if config.data_dir == None:
+            self.root_dir = ROOT_DIR
+        else:
+            self.root_dir = config.data_dir
+
+        if config.train_re:
+            train_re = config.train_re
+        else:
+            train_re = None
+
+        # load datasets
+        self.train_data = NSReader(
+            mat_file=self.train_file,
+            root_dir=self.root_dir,
+            N=self.n_train,
+            order="front",
+            S=self.S, T=self.T, sub_s=self.sub_s, sub_t=self.sub_t,
+            Re=train_re,
+        )
+        # update the grid_size
+        if self.grid_size < 0:
+            self.grid_size = self.train_data.x.shape[-1]
+
+        self.test_data = []
+        for i, test_file in enumerate(self.test_files):
+            if config.test_re:
+                test_re = config.test_re[i]
+            else:
+                test_re = None
+
+            self.test_data.append(
+                NSReader(mat_file=test_file,
+                         root_dir=self.root_dir,
+                         N=self.n_test,
+                         order="back",
+                         S=self.S, T=self.T, sub_s=self.sub_s, sub_t=self.sub_t,
+                         Re=test_re,)
+            )
+        if self.selfcon:
+            self.selfcon_data = NSReader(
+                mat_file=self.train_file,
+                root_dir=self.root_dir,
+                N=self.n_train,
+                order="front",
+                S=self.S, T=self.T, sub_s=self.sub_s, sub_t=self.sub_t,
+                Re=config.selfcon_re,
+            )
+
+        if config.use_augmentation:
+            cfig = config.use_augmentation.CropResize
+            self.t_CropResize = RandomCropResize(p=cfig.p,
+                                                 scale_min=cfig.scale_min,
+                                                 size_min=cfig.size_min
+                                                 )
+            self.t_GridResizing = GridResizing(self.grid_size)
+            cfig = config.use_augmentation.Flip
+            self.t_Flip = RandomFlip(p=cfig.p)
+            # compose all of these
+            self.transform_xy = Compose([
+                self.t_CropResize,
+                self.t_GridResizing,
+                self.t_Flip
+            ])
+        else:
+            self.transform_xy = None
+
+        # supervised training data
+        self.train_db_0 = AugmentedTensorDataset(
+            self.train_data.x,
+            self.train_data.y,
+            self.train_data.re,
+            transform_xy=self.transform_xy
+        )
+
+        # test data
+        self.test_dbs = []
+        for test_data in self.test_data:
+            self.test_dbs.append(
+                AugmentedTensorDataset(
+                    test_data.x,
+                    test_data.y,
+                    self.train_data.re,
+                    transform_xy=None
+                )
+            )
+
+        # unsupervised training data (if available)
+        if self.selfcon:
+            self.selfcon_db = torch.utils.data.TensorDataset(
+                self.selfcon_data.x
+            )
+            # stack dataloaders
+            self.train_db = torch.utils.data.StackDataset(
+                train=self.train_db_0, selfcon=self.selfcon_db
+            )
+        else:
+            self.train_db = torch.utils.data.StackDataset(
+                train=self.train_db_0
+            )
+
+        # train loader
+        self.train_loader = torch.utils.data.DataLoader(
+            self.train_db,
+            batch_size=self.batch_size,
+            shuffle=True
+        )
+
+        # test loader
+        self.test_loaders = []
+        for test_db in self.test_dbs:
+            self.test_loaders.append(
+                torch.utils.data.DataLoader(
+                    test_db,
+                    batch_size=self.batch_size,
+                    shuffle=False
+                )
+            )

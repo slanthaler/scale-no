@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from torch.utils.data.dataset import Dataset
 import torchvision.transforms.functional as F
 
@@ -7,20 +8,22 @@ from symmetry_no.darcy_utilities import DarcyExtractBC
 # tensor dataset with augmentation possibility
 
 class AugmentedTensorDataset(Dataset):
-    def __init__(self, x, y, transform_xy=None):
+    def __init__(self, x, y, re=1, transform_xy=None):
         assert x.size(0) == y.size(0), "Size mismatch between tensors"
         self.x = x
         self.y = y
+        self.re = re
         self.transform_xy = transform_xy
 
     def __getitem__(self, index):
         x = self.x[index]
         y = self.y[index]
+        re = self.re[index]
 
         if self.transform_xy is not None:
-            x,y = self.transform_xy(x,y)
+            x,y = self.transform_xy(x,y,re)
 
-        return x,y
+        return x,y,re
 
     def __len__(self):
         return self.x.size(0)
@@ -111,7 +114,7 @@ class RandomCropResize:
         #
         assert self.scale_min<=1.0, f'Scaling factor can at most be 1.0, got {scale_min=}'
 
-    def get_params(self, x, y):
+    def get_params(self, x, y, re=1):
         """Get parameters for ``crop`` for a random sized crop.
 
         Args:
@@ -135,16 +138,20 @@ class RandomCropResize:
             w = min(w,width)
             h = min(h,height)
 
+            scale = np.sqrt((w/width) * (h/height))
+            re = re*scale
+
             if 0 < w <= width and 0 < h <= height:
                 i = torch.randint(0, height - h + 1, size=(1,)).item()
                 j = torch.randint(0, width - w + 1, size=(1,)).item()
                 #
-                return i, j, h, w
+                return i, j, h, w, re
 
     def __call__(self,x,y):
         return self.forward(x,y)
 
     def crop(self,x,i,j,h,w):
+
         return x[...,i:i+h,j:j+w].clone()
     
     def forward(self,x,y):
