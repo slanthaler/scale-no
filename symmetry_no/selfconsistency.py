@@ -1,7 +1,7 @@
 from symmetry_no.data_augmentation import RandomCropResize
 from symmetry_no.darcy_utilities import DarcyExtractBC
 
-def LossSelfconsistency(model,x,loss_fn,y=None):
+def LossSelfconsistency(model,x,loss_fn,y=None,min_scale=None):
     """
     Selfconsistency loss: 
 
@@ -13,7 +13,10 @@ def LossSelfconsistency(model,x,loss_fn,y=None):
     The subdomain is chosen randomly each time.
     """
     #
-    transform_xy = RandomCropResize(p=1.0)
+    if min_scale:
+        transform_xy = RandomCropResize(p=1.0,min_scale=min_scale)
+    else:
+        transform_xy = RandomCropResize(p=1.0)
     batch_size = x.shape[0]
 
     # If y is given, we use it as the ground truth. the gradient only flow to y_small_
@@ -41,6 +44,6 @@ def LossSelfconsistency(model,x,loss_fn,y=None):
 
         x_small = DarcyExtractBC(x_small,y_small)
         #
-        y_small_ = model(x_small)
+        y_small_ = model(x_small).detach()  # detach y_small_ to avoid gradient flow to model
         return loss_fn(y_small_.view(batch_size,-1), y_small.view(batch_size,-1))
 
