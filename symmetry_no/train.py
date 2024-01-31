@@ -88,7 +88,6 @@ def main(config):
                 x_sc = x_sc.to(device)
                 #
                 # loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
-                min_scale = 0.5
                 loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
                 if epoch>=start_selfcon:
                     loss += 0.5 * loss_sc # replacing from 0.25 to 0.5
