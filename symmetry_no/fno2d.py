@@ -111,8 +111,10 @@ class FNO2d(nn.Module):
 
     def forward(self, x):
         # normalize the input
-        std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
-        x[:, 1:] = x[:, 1:] / std
+        std = torch.std(x[:,1:,:,:].clone().detach(), dim=[1,2,3], keepdim=True)
+        std.requires_grad = False
+        x[:, 1:,:,:] = x[:,1:,:,:] / std  ## this causes memory leak??
+        #print(torch.cuda.memory_summary())
         
         grid = self.get_grid(x.shape, x.device)
         x = torch.cat((x, grid), dim=1) # 1 is the channel dimension
