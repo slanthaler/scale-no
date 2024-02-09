@@ -1,3 +1,4 @@
+import torch
 import functorch as ft # for directional derivative computation
 
 from symmetry_no.data_augmentation import RandomCropResize
@@ -76,6 +77,7 @@ def LossSelfconsistencyDiff(model,x,loss_fn):
     G = model(x)                  # model prediction
     #
     vG = FD.rDr(G,mid_pt)         # radial derivative of model output
+    coeff = x[:,0,:,:]            # coefficient field (get rid of BC)
     vcoeff = FD.rDr(coeff,mid_pt) # radial derivative of coefficient
 
     # extract BC
@@ -84,8 +86,8 @@ def LossSelfconsistencyDiff(model,x,loss_fn):
     DarcyExtractBC(vx,vG)         # extract BC of vG and insert in vx
 
     # compute directional derivative <dG/dx,vx> at input x
-    _, dGdx_vx = ft.jvp(model, x, vx)
+    _, dGdx_vx = ft.jvp(model, (x,), (vx,))
 
-    return loss_fn(vG - dGdx_vx)
+    return loss_fn(vG,dGdx_vx)
 
     

@@ -6,7 +6,7 @@ from symmetry_no.data_loader import DarcyData
 from symmetry_no.config_helper import ReadConfig
 from symmetry_no.wandb_utilities import *
 from symmetry_no.fno2d import *
-from symmetry_no.selfconsistency import LossSelfconsistency
+from symmetry_no.selfconsistency import LossSelfconsistency, LossSelfconsistencyDiff
 
 
 def main(config):
@@ -61,6 +61,7 @@ def main(config):
         train_l2 = 0
         train_aug = 0
         train_sc = 0
+        train_sc_diff = 0
         
         # training loop
         for d in data.train_loader:
@@ -91,8 +92,12 @@ def main(config):
                 loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
                 if epoch>=start_selfcon:
                     loss += 0.25 * loss_sc
-
+                #
                 train_sc += loss_sc.item()
+                
+                # track also selfconsistency (differential version)
+                loss_sc_diff = LossSelfconsistencyDiff(model, x_sc, loss_fn)
+                train_sc_diff += loss_sc_diff.item()
 
             #
             loss.backward()
@@ -115,6 +120,7 @@ def main(config):
         train_l2 /= n_train
         train_sc /= n_train
         train_aug /= n_train
+        train_sc_diff /= n_train
         test_l2 /= n_test
 
         # track losses
@@ -122,13 +128,14 @@ def main(config):
         loss_tracker[epoch]['train_sc'] = train_sc
         loss_tracker[epoch]['train_aug'] = train_aug
         loss_tracker[epoch]['test_l2'] = test_l2
+        loss_tracker[epoch]['train_sc_diff'] = train_sc_diff
 
         t2 = default_timer()
         if args.wandb:
-            wandb.log({'time':t2-t1, 'train_l2':train_l2, 'train_selfcon':train_sc})
+            wandb.log({'time':t2-t1, 'train_l2':train_l2, 'train_selfcon':train_sc, 'train_aug':train_aug, 'train_sc_diff':train_sc_diff})
             wandb.log({f"test_l2/loss-{ii}": loss for ii, loss in enumerate(test_l2)})
         test_losses = " / ".join([f"{val:.5f}" for val in test_l2])
-        print(f'[{epoch+1:3}], time: {t2-t1:.3f}, train: {train_l2:.5f}, test: {test_losses}, train_aug: {train_aug:.5f}, train_sc: {train_sc:.5f}', flush=True)
+        print(f'[{epoch+1:3}], time: {t2-t1:.3f}, train: {train_l2:.5f}, test: {test_losses}, train_aug: {train_aug:.5f}, train_sc: {train_sc:.5f} , train_sc_diff: {train_sc_diff:.5f}', flush=True)
         
 #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
     torch.save(model.state_dict(), "model.h5")
