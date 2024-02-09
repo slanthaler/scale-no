@@ -1,3 +1,4 @@
+import torch 
 
 class FiniteDifferencer():
     """
@@ -8,10 +9,11 @@ class FiniteDifferencer():
         grid0 - shape (N0,)
         grid1 - shape (N1,)
         """
-        grid0,grid1 = torch.meshgrid(grid0,grid1)
-        self.grid = torch.stack([grid0,grid1]) # (2,N0,N1) tensor
         self.dx0 = grid0[1] - grid0[0]
         self.dx1 = grid1[1] - grid1[0]
+        # create 2d grid
+        grid0,grid1 = torch.meshgrid(grid0,grid1)
+        self.grid = torch.stack([grid0,grid1]) # (2,N0,N1) tensor
 
     def __check(self,a):
         """
@@ -44,5 +46,22 @@ class FiniteDifferencer():
         rDr(a) = (grid-mid_pt)*Dx(a) (vector multiplication on RHS)
         """
         self.__check(a)
-        r = self.grid - mid_pt
+        r = self.grid - mid_pt.view(2,1,1)
         return r[0]*self.Dx0(a) + r[1]*self.Dx1(a)
+
+
+
+if __name__=='__main__':
+
+    # some basic tests for finite differencer
+    N0,N1 = 10,10
+    grid0,grid1 = torch.linspace(0,1,N0), torch.linspace(0,1,N1)
+    FD = FiniteDifferencer(grid0,grid1)
+    #
+    a = torch.rand((2,N0,N1))
+    print(FD.Dx0(a).shape, FD.Dx1(a).shape, FD.rDr(a,torch.rand((2,1,1))).shape)
+    
+    # check rDr(x1) == x1, rDr(x2) == x2
+    a = FD.grid
+    fd = FD.rDr(a,torch.zeros((2,)))
+    print('rDr on [x1,x2] gives correct result? ',torch.allclose(a,fd))
