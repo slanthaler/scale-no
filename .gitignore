@@ -1,6 +1,7 @@
 *~
 \#*
 wandb/*
+model/*
 symmetry_no/wandb/*
 symmetry-no/__pycache__
 *.cpython*

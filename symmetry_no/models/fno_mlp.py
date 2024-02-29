@@ -250,14 +250,14 @@ class FNOmlpRe(nn.Module):
 
     def fft(self, x):
         batchsize, C, S1, S2 = x.shape
-        x = torch.cat([x, -x.flip(dims=[-2])[..., 1:S1-1:self.pad, :]], dim=-2)
-        x = torch.cat([x, -x.flip(dims=[-1])[..., :, 1:S2-1:self.pad]], dim=-1)
+        # x = torch.cat([x, -x.flip(dims=[-2])[..., 1:S1-1:self.pad, :]], dim=-2)
+        # x = torch.cat([x, -x.flip(dims=[-1])[..., :, 1:S2-1:self.pad]], dim=-1)
         x_ft = torch.fft.rfft2(x, dim=[2,3], norm="ortho")
         return x_ft
 
     def ifft(self, x):
         x = torch.fft.irfftn(x, s=(self.S1_extended, self.S2_extended), norm="ortho")
-        x = x[:, :, :self.S1, :self.S2]
+        # x = x[:, :, :self.S1, :self.S2]
         return x
 
     def skip_block(self, skip, l):
@@ -280,8 +280,8 @@ class FNOmlpRe(nn.Module):
     def forward(self, x, Re):
         S1, S2 = x.shape[2], x.shape[3]
         self.S1, self.S2 = S1, S2
-        self.S1_extended, self.S2_extended = S1+int(np.ceil((S1-2)/self.pad)), S2+int(np.ceil((S2-2)/self.pad))
-        # self.S1_extended, self.S2_extended = self.S1, self.S2
+        # self.S1_extended, self.S2_extended = S1+int(np.ceil((S1-2)/self.pad)), S2+int(np.ceil((S2-2)/self.pad))
+        self.S1_extended, self.S2_extended = self.S1, self.S2
 
         grid = self.get_grid(x.shape, x.device)
         K_features = self.get_k(x, Re, self.S1_extended, self.S2_extended)

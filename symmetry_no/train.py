@@ -4,7 +4,7 @@ import argparse
 
 # sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
 
-from symmetry_no.data_loader import DarcyData, NSData
+from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
 from symmetry_no.config_helper import ReadConfig
 from symmetry_no.wandb_utilities import *
 from symmetry_no.models.fno2d import *
@@ -12,8 +12,10 @@ from symmetry_no.models.fno2d_doubled import *
 from symmetry_no.selfconsistency import LossSelfconsistency
 
 
-def main(config):
+def train(config):
     #
+    print("job started")
+
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     print(f'Using cuda? {device}')
@@ -25,20 +27,25 @@ def main(config):
 
     # load training and test datasets
     if config.dataset == 'darcy':
-        print('Loading datasets...')
+        print('Loading Darcy datasets...')
         data = DarcyData(config)
+        n_train = config.n_train
+        n_test = config.n_test
 
+    elif config.dataset == 'helmholtz':
+        print('Loading Helmholtz datasets...')
+        data = HelmholtzData(config)
         n_train = config.n_train
         n_test = config.n_test
 
     elif config.dataset == 'NS':
-        print('Loading datasets...')
+        print('Loading NS datasets...')
         data = NSData(config)
         n_train = config.n_train * config.T
         n_test = config.n_test * config.T
 
     else:
-        print("config.dataset should be either 'darcy' or 'NS'.")
+        print("config.dataset should be either 'darcy', 'helmholtz', or 'NS'.")
 
     # Initialize our model, recursively go over all modules and convert their parameters and buffers to CUDA tensors (if device is set to cuda)
     modes1 = config.modes
@@ -46,8 +53,8 @@ def main(config):
     width  = config.width
     depth  = config.depth
 
-    # model = FNO2d(modes1, modes2, width, depth).to(device)
-    model = FNO2d_doubled(modes1,modes2,width,depth).to(device)
+    model = FNO2d(modes1, modes2, width, depth, in_channel=11, out_channel=2).to(device)
+    # model = FNO2d_doubled(modes1,modes2,width,depth).to(device)
     print('FNO2d parameter count: ',count_params(model))
 
     #
@@ -141,8 +148,8 @@ def main(config):
         
 #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
     if args.wandb:
-        torch.save(model.state_dict(), "model.h5")
-    wandb.save('model.h5')
+        torch.save(model.state_dict(), "model/model.h5")
+    wandb.save('model/model.h5')
 
 
 
@@ -154,7 +161,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='ns',
+                        default='helmholtz',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                     type=str,
@@ -181,4 +188,4 @@ if __name__ == '__main__':
     print('Config file: ',args.config, flush=True)
 
     # run the main training loop
-    main(config)
+    train(config)

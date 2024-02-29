@@ -47,8 +47,8 @@ class SpectralConv2d_doubled(nn.Module):
         batchsize, C, Nx, Ny = x.shape
         # Compute Fourier coeffcients up to factor of e^(- something constant)
         sub = 8
-        x = torch.cat([x, -x.flip(dims=[-2])[..., 1:Nx-1:sub, :]], dim=-2)
-        x = torch.cat([x, -x.flip(dims=[-1])[..., :, 1:Ny-1:sub]], dim=-1)
+        # x = torch.cat([x, -x.flip(dims=[-2])[..., 1:Nx-1:sub, :]], dim=-2)
+        # x = torch.cat([x, -x.flip(dims=[-1])[..., :, 1:Ny-1:sub]], dim=-1)
         x_ft = torch.fft.rfft2(x)
 
         m1 = np.minimum(self.modes1, Nx//2)
@@ -64,7 +64,7 @@ class SpectralConv2d_doubled(nn.Module):
 
         # Return to physical space
         x = torch.fft.irfft2(out_ft, s=(x.size(-2), x.size(-1)))
-        x = x[:,:,:Nx,:Ny]
+        # x = x[:,:,:Nx,:Ny]
         return x
 
 
