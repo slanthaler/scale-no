@@ -345,10 +345,11 @@ class HelmholtzReader:
         """
         # massage the input data
         input_data = torch.tensor(mat['input_data'], dtype=torch.float32).permute(3, 2, 1, 0)
-        print(mat['output_data'].shape)
-        y = torch.tensor(mat['output_data'], dtype=torch.cfloat)
-        y = y.view_as_real().permute(2, 3, 1, 0)
-        #
+
+        y_real = torch.tensor(mat['output_data']['real'], dtype=torch.float32)
+        y_imag = torch.tensor(mat['output_data']['imag'], dtype=torch.float32)
+        y = torch.stack([y_real, y_imag], dim=-1).permute(2, 3, 1, 0)
+
         assert input_data.shape[-1] == input_data.shape[
             -2], 'Unequal number of grid points along x- and y-direction not supported.'  # Nx==Ny
         assert not n_samp or n_samp <= input_data.shape[
