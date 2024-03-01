@@ -1,0 +1,11 @@
+Virtual instance in differential self-consistency loss:
+
+generate on the spot
+--> requires specification in config file(?)
+
+A virtual instance is defined by a bunch of parameters:
+  'length': <length scale of coefficient field>
+  'length_g': <length scale of the bounary condition>
+  'size': number of grid points in each direction
+
+There are more fine-grained settings that could be made, but we can leave it at this for now.

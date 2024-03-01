@@ -71,7 +71,7 @@ def CleanUpNone(config):
 def ReadConfig(name,config_file):
     if name:           
         if config_file:
-            ValueError('--name and --config flags are mutually exclusive!')
+            raise ValueError('--name and --config flags are mutually exclusive!')
         #
         config_file = ROOT_DIR + '/config/config_' + name + '.yaml'
     

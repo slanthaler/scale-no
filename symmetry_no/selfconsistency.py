@@ -56,18 +56,18 @@ def LossSelfconsistencyDiff(model,x,loss_fn):
 
     Enforces self-consistency via infinitesimal symmetry relation:
 
-    vG = DG/dcoeff*vcoeff + dG/dBC*vG, # this is in principle
-       = DG/dx*vx                      # in practice, model=model(x)
+    vG = DG/dcoeff*vcoeff + dG/dBC*vG, # this is in principle, for G=G(coeff,BC)
+       = DG/dx*vx                      # in practice, G=model=model(x)
 
     where:
-        - G=model(coeff,BC)   -- model as function of coefficient and BC
+        - G = model(coeff,BC) -- model as function of coefficient and BC
         - vG = rDr(G)         -- (spatial) radial derivative of model output
         - vcoeff = rDr(coeff) -- (spatial) radial derivative of coefficient
         - vx = [vcoeff, ExtractBC(vG)]
     """
     # we note that radial derivative rDr is invariant under re-scaling of grid;
     # so we can choose grid on unit interval in both directions.
-    # This **assumes** that the length of the underlying domain is the same in both directions!
+    # This **assumes** that the underlying domain is square-shaped (same length in both directions)
     N0,N1 = x.shape[-2:]
     grid0,grid1 = torch.linspace(0,1,N0), torch.linspace(0,1,N1)
     FD = FiniteDifferencer(grid0,grid1)
@@ -81,13 +81,16 @@ def LossSelfconsistencyDiff(model,x,loss_fn):
     vcoeff = FD.rDr(coeff,mid_pt) # radial derivative of coefficient
 
     # extract BC
-    vx = x.clone()
+    vx = torch.zeros_like(x, device=x.device)
     vx[:,0,:,:] = vcoeff[:,:,:]   # coeff-component of vx
     DarcyExtractBC(vx,vG)         # extract BC of vG and insert in vx
 
     # compute directional derivative <dG/dx,vx> at input x
-    _, dGdx_vx = ft.jvp(model, (x,), (vx,))
+    pred, dGdx_vx = ft.jvp(model, (x,), (vx,))
 
+    # sanity check
+    assert torch.allclose(pred, G), f'Problem in differential self-consistency loss! Difference {(pred-G).abs().max().item()} should be 0.0'
+    
     return loss_fn(vG,dGdx_vx)
 
     
