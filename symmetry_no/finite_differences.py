@@ -25,7 +25,7 @@ class FiniteDifferencer():
     def Dx0(self,a):
         self.__check(a)
         #
-        Dx0a = torch.zeros_like(a)
+        Dx0a = torch.zeros_like(a, device=a.device)
         Dx0a[...,1:-1,:] = (a[...,2:,:] - a[...,:-2,:]) / (2*self.dx0)
         Dx0a[...,0, :]   = (a[...,1,:] - a[...,0,:]) / self.dx0
         Dx0a[...,-1,:]   = (a[...,-1,:] - a[...,-2,:]) / self.dx0
@@ -34,7 +34,7 @@ class FiniteDifferencer():
     def Dx1(self,a):
         self.__check(a)
         #
-        Dx1a = torch.zeros_like(a)
+        Dx1a = torch.zeros_like(a, device=a.device)
         Dx1a[...,:,1:-1] = (a[...,:,2:] - a[...,:,:-2]) / (2*self.dx1)
         Dx1a[...,:,0]    = (a[...,:,1] - a[...,:,0]) / self.dx1
         Dx1a[...,:,-1]   = (a[...,:,-1] - a[...,:,-2]) / self.dx1
@@ -47,6 +47,7 @@ class FiniteDifferencer():
         """
         self.__check(a)
         r = self.grid - mid_pt.view(2,1,1)
+        r = r.to(a.device)
         return r[0]*self.Dx0(a) + r[1]*self.Dx1(a)
 
 

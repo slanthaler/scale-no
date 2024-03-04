@@ -47,8 +47,8 @@ def main(config):
 
     # WandB – wandb.watch() automatically fetches all layer dimensions, gradients, model parameters and logs them automatically to your dashboard.
     # Using log="all" log histograms of parameter values in addition to gradients
-    if args.wandb:
-       wandb.watch(model, log_freq=20, log="all")
+    #if args.wandb:
+    #   wandb.watch(model, log_freq=20, log="all")
 
     loss_fn = LpLoss(size_average=False)
     loss_tracker = {}
@@ -90,14 +90,16 @@ def main(config):
                 #
                 # loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
                 loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
-                if epoch>=start_selfcon:
-                    loss += 0.25 * loss_sc
+                #if epoch>=start_selfcon:
+                #    loss += 0.25 * loss_sc
                 #
                 train_sc += loss_sc.item()
                 
                 # track also selfconsistency (differential version)
                 loss_sc_diff = LossSelfconsistencyDiff(model, x_sc, loss_fn)
                 train_sc_diff += loss_sc_diff.item()
+                if epoch>=start_selfcon:
+                    loss += 0.1 * loss_sc_diff
 
             #
             loss.backward()
