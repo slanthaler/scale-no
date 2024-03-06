@@ -8,7 +8,7 @@ from symmetry_no.darcy_utilities import DarcyExtractBC
 # tensor dataset with augmentation possibility
 
 class AugmentedTensorDataset(Dataset):
-    def __init__(self, x, y, re=1, transform_xy=None):
+    def __init__(self, x, y, re=None, transform_xy=None):
         assert x.size(0) == y.size(0), "Size mismatch between tensors"
         self.x = x
         self.y = y
@@ -18,11 +18,16 @@ class AugmentedTensorDataset(Dataset):
     def __getitem__(self, index):
         x = self.x[index]
         y = self.y[index]
-        re = self.re[index]
 
-        if self.transform_xy is not None:
-            x,y = self.transform_xy(x,y,re)
+        if self.re is None:
+            if self.transform_xy is not None:
+                x, y = self.transform_xy(x, y)
+            return x, y
 
+        else:
+            re = self.re[index]
+            if self.transform_xy is not None:
+                x,y = self.transform_xy(x,y,re)
         return x,y,re
 
     def __len__(self):
@@ -100,7 +105,7 @@ class RandomFlip:
         return x,y
 
 class RandomCropResize:
-    def __init__(self, p=0.5, scale_min=0.1, size_min=40):
+    def __init__(self, p=0.5, scale_min=0.1, size_min=32):
         """
         Args:
             p (float): probability with which to apply the transformation

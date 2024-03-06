@@ -1,7 +1,7 @@
 ---
 #
-name: 'ns'
-run_name: 'NS'
+name: 'ns_b_aug_mlp'
+run_name: 'NS_boundary RE'
 
 dataset: 'NS'
 # fno2d
@@ -13,7 +13,7 @@ depth: 4
 learning_rate: 1e-3
 weight_decay: 1e-4
 
-batch_size: 5
+batch_size: 10
 epochs: 101
 
 n_train: 20
@@ -22,7 +22,7 @@ n_selfcon: 20
 epochs_selfcon: 10 # now epochs_selfcon is the epoch to start self-consistency loss
 epoch_test: 5
 
-S: 256
+S: 128
 T: 300
 sub_s: 1
 sub_t: 1
@@ -33,15 +33,19 @@ sub_t: 1
 data_dir: '/media/wumming/HHD/HHD_data/KF/'
 
 train_data: 'KF_f0_Re1000_N25_T500_S256_part0.pt'
-train_re:
+train_re: 1000
 test_data: ['KF_f0_Re250_N25_T500_S256_part0.pt',
             'KF_f0_Re500_N25_T500_S256_part0.pt',
             'KF_f0_Re1000_N25_T500_S256_part0.pt',
             'KF_f0_Re2000_N25_T500_S256_part0.pt',
             'KF_f0_Re4000_N25_T500_S256_part0.pt']
-test_re:
+test_re: [250,
+          500,
+          1000,
+          2000,
+          4000]
 selfcon_data:
-selfcon_re:
+
 #
-augmentation_loss: False
+augmentation_loss: True
 use_augmentation:

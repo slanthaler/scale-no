@@ -1,7 +1,7 @@
 ---
 #
-name: 'ns'
-run_name: 'NS'
+name: 'ns_aug'
+run_name: 'NS_aug'
 
 dataset: 'NS'
 # fno2d
@@ -41,7 +41,7 @@ test_data: ['KF_f0_Re250_N25_T500_S256_part0.pt',
             'KF_f0_Re4000_N25_T500_S256_part0.pt']
 test_re:
 selfcon_data:
-selfcon_re:
+
 #
-augmentation_loss: False
+augmentation_loss: True
 use_augmentation:

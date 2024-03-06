@@ -307,13 +307,15 @@ class HelmholtzReader:
                  mat_file,
                  root_dir=ROOT_DIR + '/data/',
                  n_samp=None,
-                 grid_size=None):
+                 grid_size=None,
+                 Re = 1):
         """
         Args:
             mat_file (string): Path to the mat file (Matlab v7.3).
             root_dir (string): Directory with the data.
             n_samp (int): number of samples to extract
             grid_size (int): desired grid size of the output (grid_size==None: keep original)
+            Re: wavenumber k
         """
         self.mat_file = mat_file
         self.root_dir = root_dir
@@ -332,6 +334,9 @@ class HelmholtzReader:
         self.x, self.y = self.unpack_mat(mat,
                                          n_samp=n_samp,
                                          grid_size=grid_size)
+        if Re == None:
+            Re = 1
+        self.re = Re * torch.ones(self.x.shape[0], 1, requires_grad=False)
 
     def __len__(self):
         return len(self.x)
@@ -364,6 +369,7 @@ class HelmholtzReader:
         # Filter out boundary conditions (each boundary condition --> 1 channel)
         x[:, 0, :, :] = input_data[:, 0, :, :]
         x = HelmholtzExtractBC(x, y)
+        # x = DarcyExtractBC(x, x[:, 1, :, :])
         print(x.shape)
         #
         del input_data
@@ -387,7 +393,11 @@ class HelmholtzData:
 
     def __init__(self, config):
         # Load training and test datasets
-        self.train_file = config.train_data
+        if isinstance(config.train_data, list):
+            self.train_files = config.train_data
+        else:
+            self.train_files = [config.train_data]
+
         if isinstance(config.test_data, list):
             self.test_files = config.test_data
         else:
@@ -410,21 +420,31 @@ class HelmholtzData:
         else:
             self.root_dir = config.data_dir
 
-        # load datasets
-        self.train_data = HelmholtzReader(self.train_file,
-                                      root_dir=self.root_dir,
-                                      n_samp=self.n_train,
-                                      grid_size=self.grid_size)
-        # update the grid_size
-        if self.grid_size < 0:
-            self.grid_size = self.train_data.x.shape[-1]
+
+        self.train_data = []
+        for i, train_files in enumerate(self.train_files):
+            if config.train_re:
+                train_re = config.train_re[i]
+            else:
+                train_re = None
+            self.train_data.append(HelmholtzReader(train_files,
+                                              root_dir=self.root_dir,
+                                              n_samp=self.n_train,
+                                              grid_size=self.grid_size,
+                                              Re=train_re))
 
         self.test_data = []
-        for test_file in self.test_files:
+        for i, test_file in enumerate(self.test_files):
+            if config.test_re:
+                test_re = config.test_re[i]
+            else:
+                test_re = None
             self.test_data.append(HelmholtzReader(test_file,
                                               root_dir=self.root_dir,
                                               n_samp=self.n_test,
-                                              grid_size=self.grid_size))
+                                              grid_size=self.grid_size,
+                                              Re=test_re))
+
         if self.selfcon:
             self.selfcon_data = SelfconReader(self.selfcon_file,
                                               root_dir=self.root_dir,
@@ -449,12 +469,17 @@ class HelmholtzData:
         else:
             self.transform_xy = None
 
-        # supervised training data
-        self.train_db_0 = AugmentedTensorDataset(
-            self.train_data.x,
-            self.train_data.y,
-            transform_xy=self.transform_xy
-        )
+        # train data
+        self.train_dbs = []
+        for train_data in self.train_data:
+            self.train_dbs.append(
+                AugmentedTensorDataset(
+                    train_data.x,
+                    train_data.y,
+                    train_data.re,
+                    transform_xy=None
+                )
+            )
 
         # test data
         self.test_dbs = []
@@ -463,30 +488,36 @@ class HelmholtzData:
                 AugmentedTensorDataset(
                     test_data.x,
                     test_data.y,
+                    test_data.re,
                     transform_xy=None
                 )
             )
 
         # unsupervised training data (if available)
-        if self.selfcon:
-            self.selfcon_db = torch.utils.data.TensorDataset(
-                self.selfcon_data.x
-            )
-            # stack dataloaders
-            self.train_db = torch.utils.data.StackDataset(
-                train=self.train_db_0, selfcon=self.selfcon_db
-            )
-        else:
-            self.train_db = torch.utils.data.StackDataset(
-                train=self.train_db_0
-            )
+        # if self.selfcon:
+        #     self.selfcon_db = torch.utils.data.TensorDataset(
+        #         self.selfcon_data.x
+        #     )
+        #     # stack dataloaders
+        #     self.train_db = torch.utils.data.StackDataset(
+        #         train=self.train_db_0, selfcon=self.selfcon_db
+        #     )
+        # else:
+        #     self.train_db = torch.utils.data.StackDataset(
+        #         train=self.train_db_0
+        #     )
 
-        # train loader
-        self.train_loader = torch.utils.data.DataLoader(
-            self.train_db,
-            batch_size=self.batch_size,
-            shuffle=True
-        )
+        # test train_loader
+        self.train_loaders = []
+        for train_db in self.train_dbs:
+            self.train_loaders.append(
+                torch.utils.data.DataLoader(
+                    train_db,
+                    batch_size=self.batch_size,
+                    shuffle=False
+                )
+            )
+        self.train_loader = self.train_loaders[0]
 
         # test loader
         self.test_loaders = []
@@ -692,7 +723,7 @@ class NSData:
                 AugmentedTensorDataset(
                     test_data.x,
                     test_data.y,
-                    self.train_data.re,
+                    test_data.re,
                     transform_xy=None
                 )
             )

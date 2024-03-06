@@ -10,6 +10,7 @@ from symmetry_no.wandb_utilities import *
 from symmetry_no.models.fno2d import *
 from symmetry_no.models.fno2d_doubled import *
 from symmetry_no.models.fno_mlp import *
+from symmetry_no.models.fno_re import *
 from symmetry_no.selfconsistency import LossSelfconsistency
 
 
@@ -47,12 +48,10 @@ def main(config):
         print("config.dataset should be either 'darcy' or 'NS'.")
 
     # Initialize our model, recursively go over all modules and convert their parameters and buffers to CUDA tensors (if device is set to cuda)
-    modes1 = config.modes
-    modes2 = config.modes
+
     width = config.width
     depth = config.depth
-    S = config.S
-    modes = S//2
+    modes = config.modes
 
     # model = FNO2d(modes1, modes2, width, depth).to(device)
     # model = FNO2d_doubled(modes1, modes2, width, depth).to(device)
@@ -63,7 +62,10 @@ def main(config):
         modes_list.append(modes//n)
         width_list.append(n*width)
 
-    model = FNOmlpRe(modes_list, modes_list, width_list, depth=3, mlp=True, in_channel=11, out_channel=2).cuda()
+    # model = FNO2d(modes, modes, width, depth, in_channel=11, out_channel=2).to(device)
+    # model = FNO2d_doubled(modes,modes,width,depth, in_channel=11, out_channel=2).to(device)
+    # model = FNOmlpRe(modes_list, modes_list, width_list, depth=3, mlp=True, in_channel=11, out_channel=2).cuda()
+    model = FNO_mlp(width, modes, modes, depth, in_channel=11, out_channel=2).to(device)
     print('FNO2d parameter count: ', count_params(model))
 
     #
@@ -72,6 +74,7 @@ def main(config):
     epoch_test = config.epoch_test
     start_selfcon = config.epochs_selfcon
     track_selfcon = config.track_selfcon
+    augmentation_samples = config.augmentation_samples
 
     use_augmentation = config.augmentation_loss
     iterations = epochs * max(1, n_train // batch_size)
@@ -93,41 +96,41 @@ def main(config):
         train_sc = 0
 
         # training loop
-        for d in data.train_loader:
-            x, y, re = d['train']
-            x, y, re = x.to(device), y.to(device), re.to(device)
+        for i, train_loader in enumerate(data.train_loaders):
+            for d in train_loader:
+                x, y, re = d
+                x, y, re = x.to(device), y.to(device), re.to(device)
 
-            # supervised training
-            optimizer.zero_grad()
-            out = model(x, re)
-            # DO WE NEED TO NORMALIZE THE OUTPUT??
+                # supervised training
+                optimizer.zero_grad()
+                out = model(x, re)
+                # DO WE NEED TO NORMALIZE THE OUTPUT??
 
-            loss = loss_fn(out.view(batch_size, -1), y.view(batch_size, -1))
-            train_l2 += loss.item()
+                loss = loss_fn(out.view(batch_size, -1), y.view(batch_size, -1))
+                train_l2 += loss.item()
 
-            # augmentation via sub-sampling
-            if use_augmentation:
-                loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re)
-                loss += 1.0 * loss_aug
-                train_aug += loss_aug.item()
+                # augmentation via sub-sampling
+                for j in range(augmentation_samples):
+                    if use_augmentation:
+                        loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re)
+                        loss += 1.0 * loss_aug
+                        train_aug += loss_aug.item()
 
-            # unsupervised training (selfconsistency constraint)
-            if data.selfcon and (track_selfcon or epoch >= start_selfcon):
-                x_sc = d['selfcon'][0]
-                x_sc = x_sc.to(device)
+                    # unsupervised training (selfconsistency constraint)
+                    if data.selfcon and (track_selfcon or epoch >= start_selfcon):
+                        x_sc = d['selfcon'][0]
+                        x_sc = x_sc.to(device)
+                        #
+                        # loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
+                        loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
+                        if epoch >= start_selfcon:
+                            loss += 0.1 * loss_sc
+
+                        train_sc += loss_sc.item()
                 #
-                # loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
-                loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
-                if epoch >= start_selfcon:
-                    loss += 0.1 * loss_sc
-
-                train_sc += loss_sc.item()
-
-            #
-            loss.backward()
-            optimizer.step()
-            scheduler.step()
-
+                loss.backward()
+                optimizer.step()
+                scheduler.step()
         #
         model.eval()
         test_l2 = np.zeros((len(data.test_loaders),))
@@ -142,9 +145,9 @@ def main(config):
                         test_l2[i] += loss_fn(out.view(batch_size, -1), y.view(batch_size, -1)).item()
 
         # normalize losses
-        train_l2 /= n_train
-        train_sc /= n_train
-        train_aug /= n_train
+        train_l2 /= n_train * len(data.train_loaders)
+        train_sc /= n_train * len(data.train_loaders) * augmentation_samples
+        train_aug /= n_train * len(data.train_loaders) * augmentation_samples
         test_l2 /= n_test
 
         t2 = default_timer()

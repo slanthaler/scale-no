@@ -111,8 +111,8 @@ class FNO2d(nn.Module):
 
     def forward(self, x, re=None):
 
-        # std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
-        # x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
+        std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
+        x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
 
         grid = self.get_grid(x.shape, x.device)
         x = torch.cat((x, grid), dim=1) # 1 is the channel dimension
@@ -126,8 +126,8 @@ class FNO2d(nn.Module):
             x = F.gelu(x)
 
         x = self.q(x)
-        # x = x*std
-        # del std
+        x = x*std
+        del std
 
         return x
     

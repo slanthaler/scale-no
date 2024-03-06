@@ -171,7 +171,7 @@ class MLP(nn.Module):
 
 
 class FNOmlpRe(nn.Module):
-    def __init__(self, modes1_list, modes2_list, width_list, depth, mlp):
+    def __init__(self, modes1_list, modes2_list, width_list, depth, mlp, in_channel=9, out_channel=1):
         super(FNOmlpRe, self).__init__()
 
         """
@@ -186,8 +186,8 @@ class FNOmlpRe(nn.Module):
         output: the solution
         output shape: (batchsize, x=s, y=s, c=1)
         """
-        self.in_c = 5
-        self.out_c = 1
+        self.in_c = in_channel
+        self.out_c = out_channel
         self.modes1_list = modes1_list
         self.modes2_list = modes2_list
         self.width_list = width_list
@@ -197,7 +197,7 @@ class FNOmlpRe(nn.Module):
         self.pad = 8 # 1/1, 1/2, 1/4, 1/8
         # self.adain = AdaIN()
 
-        self.p = MLP(self.in_c+2, self.width, self.width) # input channel is 3: (a(x, y), x, y)
+        self.p = MLP(self.in_c, self.width, self.width) # input channel is 3: (a(x, y), x, y)
         # self.feat_p = nn.Conv2d(1, self.width, kernel_size=1) # with k is 13
 
         self.k = K() # and then pass this into FFT_Down
@@ -278,6 +278,9 @@ class FNOmlpRe(nn.Module):
         return out
 
     def forward(self, x, Re):
+        std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
+        x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
+
         S1, S2 = x.shape[2], x.shape[3]
         self.S1, self.S2 = S1, S2
         # self.S1_extended, self.S2_extended = S1+int(np.ceil((S1-2)/self.pad)), S2+int(np.ceil((S2-2)/self.pad))
@@ -332,6 +335,9 @@ class FNOmlpRe(nn.Module):
 
         x = self.skip_end(x, skip)
         x = self.q(x)
+
+        x = x*std
+        del std
         return x
 
     def get_grid(self, shape, device):

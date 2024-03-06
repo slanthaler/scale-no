@@ -54,7 +54,7 @@ def train(config):
     depth  = config.depth
 
     model = FNO2d(modes1, modes2, width, depth, in_channel=11, out_channel=2).to(device)
-    # model = FNO2d_doubled(modes1,modes2,width,depth).to(device)
+    # model = FNO2d_doubled(modes1,modes2,width,depth, in_channel=11, out_channel=2).to(device)
     print('FNO2d parameter count: ',count_params(model))
 
     #

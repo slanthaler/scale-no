@@ -1,9 +1,9 @@
 ---
 #
-name: 'ns'
-run_name: 'NS'
-
+name: 'ns_aug_mlp'
+run_name: 'NS RE'
 dataset: 'NS'
+
 # fno2d
 modes: 64
 width: 32
@@ -12,7 +12,6 @@ depth: 4
 # training
 learning_rate: 1e-3
 weight_decay: 1e-4
-
 batch_size: 5
 epochs: 101
 
@@ -33,15 +32,19 @@ sub_t: 1
 data_dir: '/media/wumming/HHD/HHD_data/KF/'
 
 train_data: 'KF_f0_Re1000_N25_T500_S256_part0.pt'
-train_re:
+train_re: 1000
 test_data: ['KF_f0_Re250_N25_T500_S256_part0.pt',
             'KF_f0_Re500_N25_T500_S256_part0.pt',
             'KF_f0_Re1000_N25_T500_S256_part0.pt',
             'KF_f0_Re2000_N25_T500_S256_part0.pt',
             'KF_f0_Re4000_N25_T500_S256_part0.pt']
-test_re:
+test_re: [250,
+          500,
+          1000,
+          2000,
+          4000]
 selfcon_data:
-selfcon_re:
+
 #
-augmentation_loss: False
+augmentation_loss: True
 use_augmentation:
