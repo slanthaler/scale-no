@@ -316,10 +316,11 @@ of the inputs. This means that x has shape (batchsize, channels, x=s, y=s).
         nonlinear = self.fno(x[:,0,:,:].unsqueeze(1))
         
         # extract BC
-        BC_left   = x[:,1, 0, :].clone().unsqueeze(1) # shape: (B, 1, s)
-        BC_bottom = x[:,2, :, 0].clone().unsqueeze(1)
-        BC_right  = x[:,3,-1, :].clone().unsqueeze(1)
-        BC_top    = x[:,4, :,-1].clone().unsqueeze(1)
+        x_ = x.clone()
+        BC_left   = x_[:,1, 0, :].unsqueeze(1) # shape: (B, 1, s)
+        BC_bottom = x_[:,2, :, 0].unsqueeze(1)
+        BC_right  = x_[:,3,-1, :].unsqueeze(1)
+        BC_top    = x_[:,4, :,-1].unsqueeze(1)
         # combine all BC's
         BC = torch.cat((BC_left, BC_bottom, BC_right, BC_top), dim=1) # shape: (B, 4, s)
         #
