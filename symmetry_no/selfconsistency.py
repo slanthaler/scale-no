@@ -42,6 +42,6 @@ def LossSelfconsistency(model,x,loss_fn,y=None):
         x_small = DarcyExtractBC(x_small,y_small)
         #
         y_small_ = model(x_small)
-        y_small_ = y_small_.detach() # detach y_small_ to avoid gradient flow to model
+        #y_small_ = y_small_.detach() # detach y_small_ to avoid gradient flow to model
         return loss_fn(y_small_.view(batch_size,-1), y_small.view(batch_size,-1))
 

@@ -271,7 +271,7 @@ class FNO2dSemiLinear(nn.Module):
     '''
 
     def __init__(self, modes1, modes2,  width, depth=4,
-                 in_channel=1, out_channel=1, lin_modes=16):
+                 in_channel=1, out_channel=1, lin_modes=12):
         super(FNO2dSemiLinear, self).__init__()
 
         """
@@ -295,11 +295,14 @@ class FNO2dSemiLinear(nn.Module):
         # explanation:
         # 1. factor 2 because Fourier coefficients complex --> real transformation
         # 2. factor 4 because we concatenate 4 boundary conditions into a (4, x=s) tensor
-        fno_out_channel = out_channel * lin_modes * 2 * 4 # explanation below
-        self.fno = FNO2dBasic(modes1, modes2, width, depth,in_channel, fno_out_channel)
+        self.lin_channel = out_channel * lin_modes * 2 * 4 # explanation above
+        self.fno_out_channel = self.lin_channel #16
+        self.fno = FNO2dBasic(modes1, modes2, width, depth, in_channel, self.fno_out_channel)
 
-        # linear part of the architecture
-        
+#        self.fno = FNO2dBasic(modes1, modes2, width, depth, 5, 1) 
+
+        # 
+        #self.proj = nn.Parameter(torch.randn(self.lin_channel, self.fno_out_channel)) 
         
         
     def forward(self, x):
@@ -311,12 +314,12 @@ of the inputs. This means that x has shape (batchsize, channels, x=s, y=s).
         #
         batchsize, gridsize = x.shape[0], x.shape[-1]
         nonlinear = self.fno(x[:,0,:,:].unsqueeze(1))
-
+        
         # extract BC
-        BC_left   = x[:,1, 0, :].unsqueeze(1) # shape: (B, 1, s)
-        BC_bottom = x[:,2, :, 0].unsqueeze(1)
-        BC_right  = x[:,3,-1, :].unsqueeze(1)
-        BC_top    = x[:,4, :,-1].unsqueeze(1)
+        BC_left   = x[:,1, 0, :].clone().unsqueeze(1) # shape: (B, 1, s)
+        BC_bottom = x[:,2, :, 0].clone().unsqueeze(1)
+        BC_right  = x[:,3,-1, :].clone().unsqueeze(1)
+        BC_top    = x[:,4, :,-1].clone().unsqueeze(1)
         # combine all BC's
         BC = torch.cat((BC_left, BC_bottom, BC_right, BC_top), dim=1) # shape: (B, 4, s)
         #
@@ -324,9 +327,9 @@ of the inputs. This means that x has shape (batchsize, channels, x=s, y=s).
         BC_ft = BC_ft[:,:,:self.lin_modes] # retain only specified number of modes
         BC_ft = torch.view_as_real(BC_ft)  # get real-valued array
         # combine 4 BC channels, with 2*lin_modes 
-        BC_ft = BC_ft.reshape(batchsize, -1)  # shape: (B, 8*lin_modes, 1, 1)
-
+        BC_ft = BC_ft.reshape(batchsize, -1)  # shape: (B, 8*lin_modes)
+        
         # combine into semi-linear output
-        output = torch.einsum('bjxy,bc->bxy',nonlinear,BC_ft)
-
+        output = torch.einsum('bjxy,bj->bxy',nonlinear,BC_ft) / (8*self.lin_modes)
         return output
+       

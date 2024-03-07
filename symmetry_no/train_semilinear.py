@@ -1,4 +1,4 @@
-import sys
+import sys, os
 import wandb
 import argparse
 
@@ -90,7 +90,7 @@ def main(config):
                 # loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
                 loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
                 if epoch>=start_selfcon:
-                    loss += 0.5 * loss_sc # replacing from 0.25 to 0.5
+                    loss += 0.25 * loss_sc # replacing from 0.25 to 0.5
 
                 train_sc += loss_sc.item()
 
@@ -110,6 +110,14 @@ def main(config):
                     out = model(x)
                     # DO WE NEED TO NORMALIZE THE OUTPUT??
                     test_l2[i] += loss_fn(out.view(batch_size,-1), y.view(batch_size,-1)).item()
+
+                # save a batch (examples of outputs)...
+                if i==0:
+                    os.makedirs("example_outputs", exist_ok=True)
+                    examples = {'x': x.to('cpu'), 'y': y.to('cpu'), 'pred': out.to('cpu')}
+                    print(f"example_outputs/epoch{epoch}.pt")
+                    torch.save(examples,f"example_outputs/epoch{epoch}.pt")
+                        
 
         # normalize losses
         train_l2 /= n_train
