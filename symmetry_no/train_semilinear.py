@@ -115,7 +115,6 @@ def main(config):
                 if i==0:
                     os.makedirs("example_outputs", exist_ok=True)
                     examples = {'x': x.to('cpu'), 'y': y.to('cpu'), 'pred': out.to('cpu')}
-                    print(f"example_outputs/epoch{epoch}.pt")
                     torch.save(examples,f"example_outputs/epoch{epoch}.pt")
 
                     # save also a bunch of selfconsistency pairs... something seems to be going wrong here?

@@ -332,5 +332,6 @@ of the inputs. This means that x has shape (batchsize, channels, x=s, y=s).
         
         # combine into semi-linear output
         output = torch.einsum('bjxy,bj->bxy',nonlinear,BC_ft) / (8*self.lin_modes)
+        output = output.unsqueeze(1) # add channel dimension
         return output
        

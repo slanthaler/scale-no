@@ -84,9 +84,11 @@ def DarcyExtractBC(x,y):
     """
     Extract boundary conditions from y and add them to channels 1,...,4 in x.
     """
+    # check that inputs are valid
+    assert x.ndim==y.ndim, f'DarcyExtractBC assumes x.shape==y.shape. Found {x.shape=}, {y.shape=}.'
     unsqueeze_x = (x.ndim==3) # check whether batch dimension is missing
     unsqueeze_y = (y.ndim==3)
-
+    
     # add batch dimension
     if unsqueeze_x:
         x = x.unsqueeze(0)
