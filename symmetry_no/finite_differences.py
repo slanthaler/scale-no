@@ -27,8 +27,11 @@ class FiniteDifferencer():
         #
         Dx0a = torch.zeros_like(a, device=a.device)
         Dx0a[...,1:-1,:] = (a[...,2:,:] - a[...,:-2,:]) / (2*self.dx0)
-        Dx0a[...,0, :]   = (a[...,1,:] - a[...,0,:]) / self.dx0
-        Dx0a[...,-1,:]   = (a[...,-1,:] - a[...,-2,:]) / self.dx0
+        #Dx0a[...,0, :]   = (a[...,1,:] - a[...,0,:]) / self.dx0
+        #Dx0a[...,-1,:]   = (a[...,-1,:] - a[...,-2,:]) / self.dx0
+        # the following is a higher-order version at boundary (2nd order accurate)
+        Dx0a[...,0,:] = (4*a[...,1,:] - 3*a[...,0,:] - a[...,2,:])/(2*self.dx0)
+        Dx0a[...,-1,:] = -(4*a[...,-2,:] - 3*a[...,-1,:] - a[...,-3,:])/(2*self.dx0)
         return Dx0a
 
     def Dx1(self,a):
@@ -36,8 +39,11 @@ class FiniteDifferencer():
         #
         Dx1a = torch.zeros_like(a, device=a.device)
         Dx1a[...,:,1:-1] = (a[...,:,2:] - a[...,:,:-2]) / (2*self.dx1)
-        Dx1a[...,:,0]    = (a[...,:,1] - a[...,:,0]) / self.dx1
-        Dx1a[...,:,-1]   = (a[...,:,-1] - a[...,:,-2]) / self.dx1
+        #Dx1a[...,:,0]    = (a[...,:,1] - a[...,:,0]) / self.dx1
+        #Dx1a[...,:,-1]   = (a[...,:,-1] - a[...,:,-2]) / self.dx1
+        # the following is a higher-order version at boundary  (2nd order accurate)
+        Dx1a[...,:,0] = (4*a[...,:,1] - 3*a[...,:,0] - a[...,:,2])/(2*self.dx1)
+        Dx1a[...,:,-1] = -(4*a[...,:,-2] - 3*a[...,:,-1] - a[...,:,-3])/(2*self.dx1)
         return Dx1a
 
     def rDr(self,a,mid_pt):
@@ -66,3 +72,40 @@ if __name__=='__main__':
     a = FD.grid
     fd = FD.rDr(a,torch.zeros((2,)))
     print('rDr on [x1,x2] gives correct result? ',torch.allclose(a,fd))
+
+    # check correct derivatives of exp(sin(k0*x0) + sin(k1*x1))
+    k0,k1 = 5,10
+    N = 100
+    grid = torch.linspace(0,1,N)
+    FD = FiniteDifferencer(grid,grid)
+    #
+    x0,x1 = torch.meshgrid(grid,grid)
+    a = torch.exp(torch.sin(k0*x0) + torch.sin(k1*x1))
+
+    # analytic derivatives
+    da_dx0 = k0*torch.cos(k0*x0) * a
+    da_dx1 = k1*torch.cos(k1*x1) * a
+
+    # numerical approximation
+    ax0 = FD.Dx0(a)
+    ax1 = FD.Dx1(a)
+
+    # I believe these are correct, but the derivatives at the boundary are only 1st order approximations and therefore quite inaccurate(?) in float precision, especially(?)
+
+    print('a = exp(sin(k0*x0)+sin(k1*x1))')
+    print('da/dx0 correct? ',torch.allclose(da_dx0[1:-1,1:-1],ax0[1:-1,1:-1],rtol=1e-2))
+    print('da/dx1 correct? ',torch.allclose(da_dx1[1:-1,1:-1],ax1[1:-1,1:-1],rtol=1e-2))
+
+    print('mean / max: ',
+          torch.abs(da_dx0-ax0).mean(),
+          torch.abs(da_dx0-ax0).max())
+    print('index: ',torch.argmax(torch.abs(da_dx0-ax0)))
+    print(da_dx0.view(-1)[-1]-ax0.view(-1)[-1])
+    
+#    import matplotlib.pyplot as plt
+#    fig,axs=plt.subplots(1,2,figsize=(6,3))
+#    im = axs[0].pcolor(da_dx0)
+#    fig.colorbar(im,ax=axs[0])
+#    im = axs[1].pcolor(torch.log(torch.abs(ax0-da_dx0)))
+#    fig.colorbar(im,ax=axs[1])
+#    plt.show()
