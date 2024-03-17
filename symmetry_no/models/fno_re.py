@@ -26,12 +26,13 @@ class SpectralConv2d(nn.Module):
         2D Fourier layer. It does FFT, linear transform, and Inverse FFT.    
         """
 
-        self.n_feature = 3
-        in_channels = in_channels + 2*self.n_feature + self.n_feature # input + k_mat + Re
+        self.n_feature = 5
+        in_channels = in_channels
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.modes1 = modes1
         self.modes2 = modes2
+        self.p = MLP_complex(2*self.n_feature + self.n_feature, in_channels, in_channels)  # k_mat + Re
 
         self.scale = (1 / (in_channels * out_channels))
         # if self.modes1 == 0:
@@ -41,9 +42,9 @@ class SpectralConv2d(nn.Module):
         self.bias2 = nn.Parameter(self.scale * torch.rand(1,out_channels,1,1, dtype=torch.cfloat))
         # else:
         self.weights3 = nn.Parameter(
-            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
+            self.scale * torch.rand(in_channels+2*self.n_feature + self.n_feature, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
         self.weights4 = nn.Parameter(
-            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
+            self.scale * torch.rand(in_channels+2*self.n_feature + self.n_feature, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
 
     # Complex multiplication
     def compl_mul2d(self, input, weights):
@@ -62,20 +63,19 @@ class SpectralConv2d(nn.Module):
                           torch.arange(start=-(modes2), end=0, step=1, device=device)), 0).\
                             reshape(1, S2).repeat(S1,1).reshape(1, S1, S2)
 
-        k = torch.cat((k_x1, k_x2), 0).cfloat()[..., :modes2 + 1]
+        k = torch.cat((k_x1, k_x2), 0)[..., :modes2 + 1]
         k = k.reshape(1, 2, S1, modes2 + 1)
 
         # feature embedding
-        pow = [i / (self.n_feature - 1) for i in range(self.n_feature)]
-        k_mat = [k ** i for i in pow]
-        k_mat = torch.cat(k_mat, dim=1).repeat(batchsize, 1,1,1)
+        pow = torch.arange(start=1, end=self.n_feature+1, device=device).reshape(self.n_feature, 1, 1, 1) /self.n_feature
+        k_mat = torch.pow(k.cfloat(), pow)
+        k_mat = k_mat.reshape(1, 2*self.n_feature, S1, modes2 + 1).repeat(batchsize, 1,1,1)
         k_mat.requires_grad = False
         return k_mat
 
     def embed_re(self, S2, re):
-        pow = [i / (self.n_feature - 1) for i in range(self.n_feature)]
-        re_mat = [re ** i for i in pow]
-        re_mat = torch.cat(re_mat, dim=1)[..., :S2//2 + 1]
+        pow = torch.arange(start=1, end=self.n_feature+1, device=device).reshape(1, self.n_feature, 1, 1) /self.n_feature
+        re_mat = torch.pow(re, pow)[..., :S2//2 + 1]
         return re_mat
 
     def forward(self, x, Re):
@@ -85,18 +85,20 @@ class SpectralConv2d(nn.Module):
         # add wavenumber k_mat
         k_mat = self.get_k(x.shape[0], x.shape[-2], x.shape[-1], device=x.device)
         re_mat = self.embed_re(x.shape[-1], Re)
+        feature = self.p(torch.cat([k_mat, re_mat], dim=1))
         x_ft = torch.cat([x_ft, k_mat, re_mat], dim=1)
+        x_ft = x_ft #+ feature
 
-        # if self.modes1 == 0:
-            # MLP layer
-        out_ft = self.compl_mul2d(x_ft, self.weights1)
-        out_ft = out_ft + self.bias1
-
-        out_ft = F.gelu(out_ft.real) + 1j * F.gelu(out_ft.imag)
-        # out_ft = torch.tanh(out_ft.abs()) * (out_ft / (out_ft.abs() + self.eps))
-
-        out_ft = self.compl_mul2d(out_ft, self.weights2)
-        out_ft1 = out_ft + self.bias2
+        # # if self.modes1 == 0:
+        #     # MLP layer
+        # out_ft = self.compl_mul2d(x_ft, self.weights1)
+        # out_ft = out_ft + self.bias1
+        #
+        # out_ft = F.gelu(out_ft.real) + 1j * F.gelu(out_ft.imag)
+        # # out_ft = torch.tanh(out_ft.abs()) * (out_ft / (out_ft.abs() + self.eps))
+        #
+        # out_ft = self.compl_mul2d(out_ft, self.weights2)
+        # out_ft1 = out_ft + self.bias2
 
         # else:
             # contraction layer
@@ -107,9 +109,9 @@ class SpectralConv2d(nn.Module):
         out_ft2[:, :, :m1, :m2] = self.compl_mul2d(x_ft[:, :, :m1, :m2], self.weights3[..., :m1, :m2])
         out_ft2[:, :, -m1:, :m2] = self.compl_mul2d(x_ft[:, :, -m1:, :m2], self.weights4[..., -m1:, :m2])
 
-        out_ft = out_ft1 + out_ft2
+        # out_ft = out_ft1 + out_ft2
         #Return to physical space
-        x = torch.fft.irfft2(out_ft, s=(x.size(-2), x.size(-1)))
+        x = torch.fft.irfft2(out_ft2, s=(x.size(-2), x.size(-1)))
         return x
 
 class MLP(nn.Module):
@@ -122,6 +124,24 @@ class MLP(nn.Module):
         x = self.mlp1(x)
         x = F.gelu(x)
         x = self.mlp2(x)
+        return x
+
+class MLP_complex(nn.Module):
+    def __init__(self, in_channels, out_channels, mid_channels):
+        super(MLP_complex, self).__init__()
+        self.out_channels = out_channels
+        self.mlp1 = nn.Conv2d(in_channels*2, mid_channels*2, 1)
+        self.mlp2 = nn.Conv2d(mid_channels*2, out_channels*2, 1)
+
+    def forward(self, x):
+        shape = x.shape
+        x = torch.view_as_real(x)
+        x = x.permute(0,4,1,2,3).flatten(1,2)
+        x = self.mlp1(x)
+        x = F.gelu(x)
+        x = self.mlp2(x)
+        x = x.reshape(shape[0], 2, self.out_channels, shape[-2], shape[-1]).permute(0,2,3,4,1)
+        x = torch.view_as_complex(x.contiguous())
         return x
 
 class FNO_mlp(nn.Module):
@@ -145,9 +165,13 @@ class FNO_mlp(nn.Module):
         self.depth = depth
         self.in_channel = in_channel
         self.out_channel = out_channel
+        self.n_feature = self.width // 4
+        self.pow = torch.arange(start=0, end=self.n_feature).reshape(1, self.n_feature, 1, 1) / (self.n_feature - 1)
 
         #self.p = nn.Linear(self.in_channel, self.width) # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
-        self.p = MLP(self.in_channel+1, self.width, self.width)
+        # self.p = MLP(self.in_channel+1, self.width, self.width)
+        self.p = MLP(self.in_channel + 1, self.width, self.width)
+        self.p_re = MLP(self.width, self.width, self.width)
 
         self.conv = []
         self.mlp = []
@@ -169,11 +193,14 @@ class FNO_mlp(nn.Module):
 
         std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
         x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
+        re = re.reshape(-1, 1, 1, 1)
 
-        grid = self.get_grid(x.shape, x.device)
-        re = re.reshape(-1,1,1,1) * torch.ones((x.shape[0], 1, x.shape[2], x.shape[3]), requires_grad=False, device=x.device)
+        grid, grid_re = self.get_grid(x.shape, re, x.device)
+        re = re * torch.ones((x.shape[0], 1, x.shape[2], x.shape[3]), requires_grad=False, device=x.device)
         x = torch.cat((x, grid, re), dim=1) # 1 is the channel dimension
         x = self.p(x)
+        p = self.p_re(grid_re)
+        x = x + p
 
         for i in range(self.depth):
             x1 = self.conv[i](x, re)
@@ -188,10 +215,19 @@ class FNO_mlp(nn.Module):
 
         return x
 
-    def get_grid(self, shape, device):
+    def get_grid(self, shape, re, device):
         batchsize, size_x, size_y = shape[0], shape[2], shape[3]
         gridx = torch.tensor(np.linspace(0, 1, size_x), dtype=torch.float)
-        gridx = gridx.reshape(1, 1, size_x, 1).repeat([batchsize, 1, 1, size_y])
+        gridx = gridx.reshape(1, 1, size_x, 1).repeat([batchsize, 1, 1, size_y]).to(device)
         gridy = torch.tensor(np.linspace(0, 1, size_y), dtype=torch.float)
-        gridy = gridy.reshape(1, 1, 1, size_y).repeat([batchsize, 1, size_x, 1])
-        return torch.cat((gridx, gridy), dim=1).to(device)
+        gridy = gridy.reshape(1, 1, 1, size_y).repeat([batchsize, 1, size_x, 1]).to(device)
+        grid = torch.cat((gridx, gridy), dim=1)
+
+        # re_mat = re * self.pow.to(device)
+        re_mat = torch.pow(re, self.pow.to(device))
+        x_sin = torch.sin(re_mat * gridx * 2*np.pi)
+        x_cos = torch.cos(re_mat * gridx * 2*np.pi)
+        y_sin = torch.sin(re_mat * gridy * 2*np.pi)
+        y_cos = torch.cos(re_mat * gridy * 2*np.pi)
+        feature = torch.cat((x_sin, x_cos, y_sin, y_cos), dim=1)
+        return grid, feature
