@@ -111,40 +111,6 @@ def main(config):
                     # DO WE NEED TO NORMALIZE THE OUTPUT??
                     test_l2[i] += loss_fn(out.view(batch_size,-1), y.view(batch_size,-1)).item()
 
-                # save a batch (examples of outputs)...
-                if i==0:
-                    os.makedirs("example_outputs", exist_ok=True)
-                    examples = {'x': x.to('cpu'), 'y': y.to('cpu'), 'pred': out.to('cpu')}
-                    torch.save(examples,f"example_outputs/epoch{epoch}.pt")
-
-                    # save also a bunch of selfconsistency pairs... something seems to be going wrong here?
-                    from symmetry_no.data_augmentation import RandomCropResize
-                    from symmetry_no.darcy_utilities import DarcyExtractBC
-                    transform_xy = RandomCropResize(p=1.0)
-
-                    crop_examples = { 'x_original': x.clone().detach().to('cpu'),
-                                      'y_reference': y.clone().detach().to('cpu') }
-                    y = model(x)
-                    crop_examples['y_original'] = y.clone().detach().to('cpu')
-                    # resample on smaller domain
-                    i,j,h,w = transform_xy.get_params(x,y)
-                    #
-                    x_small = transform_xy.crop(x,i,j,h,w)
-                    y_small = transform_xy.crop(y,i,j,h,w)
-                    crop_examples['x_small_original'] = x_small.clone().detach().to('cpu')
-                    crop_examples['y_small_cropped'] = y_small.clone().detach().to('cpu')
-                    #
-                    x_small = DarcyExtractBC(x_small,y_small)
-                    crop_examples['x_small_extractBC'] = x_small.clone().detach().to('cpu')
-                    #
-                    y_small_ = model(x_small)
-                    crop_examples['y_small_predicted'] = y_small_.clone().detach().to('cpu')
-                    crop_examples['x_end'] = x.clone().detach().to('cpu')
-                    crop_examples['y_end'] = y.clone().detach().to('cpu')
-                    crop_examples['y_small_end'] = y_small.clone().detach().to('cpu')
-                    crop_examples['x_small_end'] = x_small.clone().detach().to('cpu')
-                    torch.save(crop_examples,f'example_outputs/crop_epoch{epoch}.pt')
-
         # normalize losses
         train_l2 /= n_train
         train_sc /= n_train
