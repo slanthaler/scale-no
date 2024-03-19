@@ -93,7 +93,7 @@ class FNO2d(nn.Module):
         self.out_channel = out_channel
         self.normalize = normalize
         
-        self.p = nn.Linear(self.in_channel, self.width) # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
+        self.p = MLP(self.in_channel, self.width, self.width) # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
 
         self.conv = []
         self.mlp = []
@@ -110,11 +110,16 @@ class FNO2d(nn.Module):
         self.q = MLP(self.width, self.out_channel, self.width * 4) # output channel is 1: u(x, y)
 
     def forward(self, x):
+        # normalize the input
+        std = torch.std(x[:,1:,:,:].clone().detach(), dim=[1,2,3], keepdim=True)
+        std.requires_grad = False
+        x[:, 1:,:,:] = x[:,1:,:,:] / std  ## this causes memory leak??
+        #print(torch.cuda.memory_summary())
+        
         grid = self.get_grid(x.shape, x.device)
         x = torch.cat((x, grid), dim=1) # 1 is the channel dimension
-        x = self.p(x.permute(0,2,3,1)).permute(0,3,1,2)
-        #x = x.permute(0, 3, 1, 2)
-
+        x = self.p(x)
+        
         for i in range(self.depth):
             x1 = self.conv[i](x)
             x1 = self.mlp[i](x1)
@@ -123,7 +128,8 @@ class FNO2d(nn.Module):
             x = F.gelu(x)
 
         x = self.q(x)
-        #x = x.permute(0, 2, 3, 1)
+        x = x*std
+        del std
         return x
     
     def get_grid(self, shape, device):
