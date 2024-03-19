@@ -57,7 +57,7 @@ def LossSelfconsistencyDiff(model,x,loss_fn):
     Enforces self-consistency via infinitesimal symmetry relation:
 
     vG = DG/dcoeff*vcoeff + dG/dBC*vG, # this is in principle, for G=G(coeff,BC)
-       = DG/dx*vx                      # in practice, G=model=model(x)
+       = DG/dx*vx                      # this is in practice, where G=model(x)
 
     where:
         - G = model(coeff,BC) -- model as function of coefficient and BC
