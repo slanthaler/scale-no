@@ -91,7 +91,6 @@ class FNO2d(nn.Module):
         self.depth = depth
         self.in_channel = in_channel
         self.out_channel = out_channel
-        self.normalize = normalize
         
         self.p = MLP(self.in_channel, self.width, self.width) # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
 
