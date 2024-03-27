@@ -324,7 +324,7 @@ of the inputs. This means that x has shape (batchsize, channels, x=s, y=s).
         # combine all BC's
         BC = torch.cat((BC_left, BC_bottom, BC_right, BC_top), dim=1) # shape: (B, 4, s)
         #
-        BC_ft = torch.fft.rfft(BC, dim=-1) # shape: (B, 4, s//2+1)
+        BC_ft = torch.fft.rfft(BC, dim=-1, norm='forward') # shape: (B, 4, s//2+1) -- set norm to approximately compute g_k = \int_0^1 g(x)e^{-2\pi kx} dx
         BC_ft = BC_ft[:,:,:self.lin_modes] # retain only specified number of modes
         BC_ft = torch.view_as_real(BC_ft)  # get real-valued array
         # combine 4 BC channels, with 2*lin_modes 
