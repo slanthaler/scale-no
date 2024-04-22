@@ -5,7 +5,7 @@
 
 %
 k_list = [5,10,25,50,100];
-Nsamp = 128;
+Nsamp = 1024;
 s_list = [64,128,256,512,1024];
 
 %
@@ -14,11 +14,11 @@ alpha_g = 3.5; % smoothness of BC ~ smoothness of solution(?)
 tau = 2.;
 
 %
-transform_choice = 'tanh';
+transform_choice = 'lognormal';
 if strcmp(transform_choice,'lognormal')
     eps = 5;
     amin = 0;
-    amx = 0;
+    amax = 0;
     transform = @(coeff_field) exp(coeff_field/eps); % log_normal
 elseif strcmp(transform_choice,'tanh')
     eps = 1/100;
@@ -31,10 +31,11 @@ end
 
 fprintf('alpha coeff/g: %g / %g\n',alpha_a,alpha_g);
 
-for dataset=1:5 % generate a bunch of similar datasets (afterwards will subsample to generate datasets with longer length scales)
+tic;
+for dataset=4:4 % generate a bunch of similar datasets (afterwards will subsample to generate datasets with longer length scales)
     k = k_list(dataset);
     s = s_list(dataset);
-    for m=2:2
+    for m=1:1
       %
       if m==1
         mode = '';
@@ -51,22 +52,23 @@ for dataset=1:5 % generate a bunch of similar datasets (afterwards will subsampl
   
       %
       fprintf('Generating input data ...\n')
-      a = transform( GRF(alpha_a, tau, 2*s+1) );
-      g = GRF(alpha_g, tau, 2*s+1);
+
       for i=1:Nsamp
         % generate coefficient field
+        a = transform( GRF(alpha_a, tau, 2*s+1) );
+        g = GRF(alpha_g, tau, 2*s+1);
+        
         input_data(i,1,:,:) = a(1:2:end,1:2:end);
         input_data(i,2,:,:) = g(1:2:end,1:2:end);
-      end
-  
-      fprintf('Solving for the solutions ... (This may take some time)\n')
-      %
-      for i=1:Nsamp
-        %
+        
         output_data(i,:,:) = helmholtz(s, k, a, g);
+        
         if mod(i,round(Nsamp/100)) == 0
-            fprintf('dataset %i, wavenumber %k, progress %3i %%\n', dataset, k, round(100*i/Nsamp))
+            toc;
+            fprintf('dataset %i, wavenumber %i, instance %i, progress %3i %%\n', dataset, k, i, round(100*i/Nsamp))
+            tic;
         end
+        
       end
   
       %% storing the data
@@ -81,6 +83,7 @@ for dataset=1:5 % generate a bunch of similar datasets (afterwards will subsampl
   	 '-v7.3');
     end
 end
+toc;
 
 %%%
 %figure()

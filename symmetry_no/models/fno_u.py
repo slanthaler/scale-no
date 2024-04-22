@@ -170,9 +170,9 @@ class MLP(nn.Module):
         return x
 
 
-class FNOmlpRe(nn.Module):
+class FNO_U(nn.Module):
     def __init__(self, modes1_list, modes2_list, width_list, depth, mlp, in_channel=9, out_channel=1):
-        super(FNOmlpRe, self).__init__()
+        super(FNO_U, self).__init__()
 
         """
         The overall network. It contains 4 layers of the Fourier layer.
@@ -278,7 +278,7 @@ class FNOmlpRe(nn.Module):
         return out
 
     def forward(self, x, Re):
-        std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
+        std = torch.std(x[:,1:].clone().detach(), dim=[1,2,3], keepdim=True)
         x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
 
         S1, S2 = x.shape[2], x.shape[3]

@@ -9,7 +9,8 @@ from symmetry_no.config_helper import ReadConfig
 from symmetry_no.wandb_utilities import *
 from symmetry_no.models.fno2d import *
 from symmetry_no.models.fno2d_doubled import *
-from symmetry_no.models.fno_mlp import *
+from symmetry_no.models.fno_u import *
+from symmetry_no.models.fno_re import *
 from symmetry_no.selfconsistency import LossSelfconsistency
 
 
@@ -63,7 +64,9 @@ def main(config):
         modes_list.append(modes//n)
         width_list.append(n*width)
 
-    model = FNOmlpRe(modes_list, modes_list, width_list, depth=3, mlp=True, in_channel=11, out_channel=2).cuda()
+    # model = FNO_U(modes_list, modes_list, width_list, depth=3, mlp=True, in_channel=7, out_channel=1).cuda()
+    model = FNO_mlp(width, modes1, modes2, depth, in_channel=7, out_channel=1).to(device)
+    # model = FNO2d(modes1, modes2, width, depth, in_channel=7, out_channel=1).to(device)
     print('FNO2d parameter count: ', count_params(model))
 
     #
@@ -170,7 +173,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='helmholtz_mlp',
+                        default='ns',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,

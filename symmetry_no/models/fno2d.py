@@ -46,11 +46,12 @@ class SpectralConv2d(nn.Module):
         x_ft = torch.fft.rfft2(x)
 
         # Multiply relevant Fourier modes
-        out_ft = torch.zeros(batchsize, self.out_channels,  x.size(-2), x.size(-1)//2 + 1, dtype=torch.cfloat, device=x.device)
-        out_ft[:, :, :self.modes1, :self.modes2] = \
-            self.compl_mul2d(x_ft[:, :, :self.modes1, :self.modes2], self.weights1)
-        out_ft[:, :, -self.modes1:, :self.modes2] = \
-            self.compl_mul2d(x_ft[:, :, -self.modes1:, :self.modes2], self.weights2)
+        m1 = np.minimum(self.modes1, x.size(-2)//2)
+        m2 = np.minimum(self.modes2, x.size(-1)//2)
+        out_ft = torch.zeros(x.size(0), self.out_channels, x.size(-2), x.size(-1) // 2 + 1, dtype=torch.cfloat,
+                             device=x.device)
+        out_ft[:, :, :m1, :m2] = self.compl_mul2d(x_ft[:, :, :m1, :m2], self.weights1[..., :m1, :m2])
+        out_ft[:, :, -m1:, :m2] = self.compl_mul2d(x_ft[:, :, -m1:, :m2], self.weights2[..., -m1:, :m2])
 
         #Return to physical space
         x = torch.fft.irfft2(out_ft, s=(x.size(-2), x.size(-1)))
@@ -101,7 +102,8 @@ class FNO2d(nn.Module):
         for _ in range(depth):
             self.conv.append(SpectralConv2d(self.width, self.width, self.modes1, self.modes2))
             self.mlp.append(MLP(self.width, self.width, self.width))
-            self.w.append(nn.Conv2d(self.width, self.width, 1))
+            # self.w.append(nn.Conv2d(self.width, self.width, 1))
+            self.w.append(nn.Conv2d(self.width, self.width, 3, padding="same"))
         #
         self.conv = nn.ModuleList(self.conv)
         self.mlp = nn.ModuleList(self.mlp)

@@ -13,13 +13,13 @@ depth: 4
 learning_rate: 1e-3
 weight_decay: 1e-4
 batch_size: 16
-epochs: 500
+epochs: 100
 
 n_train: 1024
 n_test: 128
 n_selfcon: 1024
 epochs_selfcon: 50 # now epochs_selfcon is the epoch to start self-consistency loss
-epoch_test: 1
+epoch_test: 5
 
 
 # datasets
@@ -45,16 +45,18 @@ train_data: [
 train_re: [25,]
 
 test_data: [
-  'helmholtz_test_BC_k5_lognormal_amin0.0_amax0.0_Nsamp128_Ns65_alphacoeff1.50_alphag3.50.mat',
-  'helmholtz_test_BC_k10_lognormal_amin0.0_amax0.0_Nsamp128_Ns129_alphacoeff1.50_alphag3.50.mat',
+#  'helmholtz_test_BC_k5_lognormal_amin0.0_amax0.0_Nsamp128_Ns65_alphacoeff1.50_alphag3.50.mat',
+#  'helmholtz_test_BC_k10_lognormal_amin0.0_amax0.0_Nsamp128_Ns129_alphacoeff1.50_alphag3.50.mat',
   'helmholtz_test_BC_k25_lognormal_amin0.0_amax0.0_Nsamp128_Ns257_alphacoeff1.50_alphag3.50.mat',
-  'helmholtz_test_BC_k50_lognormal_amin0.0_amax0.0_Nsamp128_Ns513_alphacoeff1.50_alphag3.50.mat',
-  'helmholtz_test_BC_k100_lognormal_amin0.0_amax0.0_Nsamp128_Ns1025_alphacoeff1.50_alphag3.50.mat',
+#  'helmholtz_test_BC_k50_lognormal_amin0.0_amax0.0_Nsamp128_Ns513_alphacoeff1.50_alphag3.50.mat',
+#  'helmholtz_test_BC_k100_lognormal_amin0.0_amax0.0_Nsamp128_Ns1025_alphacoeff1.50_alphag3.50.mat',
 ]
-test_re: [5,10,25,50,100]
+test_re: [25,]
+#test_re: [5,10,25,50,100]
 selfcon_data:
 selfcon_re:
 #
 augmentation_loss: True
-augmentation_samples: 5
+augmentation_samples: 1
 use_augmentation:
+sample_virtual_instance: True

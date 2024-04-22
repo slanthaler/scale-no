@@ -9,9 +9,10 @@ from symmetry_no.config_helper import ReadConfig
 from symmetry_no.wandb_utilities import *
 from symmetry_no.models.fno2d import *
 from symmetry_no.models.fno2d_doubled import *
-from symmetry_no.models.fno_mlp import *
+from symmetry_no.models.fno_u import *
 from symmetry_no.models.fno_re import *
 from symmetry_no.selfconsistency import LossSelfconsistency
+from symmetry_no.gaussian_random_field import sample_helm
 
 
 def main(config):
@@ -31,18 +32,24 @@ def main(config):
         data = DarcyData(config)
         n_train = config.n_train
         n_test = config.n_test
+        in_channel = 7
+        out_channel = 1
 
     elif config.dataset == 'helmholtz':
         print('Loading Helmholtz datasets...')
         data = HelmholtzData(config)
         n_train = config.n_train
         n_test = config.n_test
+        in_channel = 11 # complex input output
+        out_channel = 2
 
     elif config.dataset == 'NS':
         print('Loading NS datasets...')
         data = NSData(config)
         n_train = config.n_train * config.T
         n_test = config.n_test * config.T
+        in_channel = 7
+        out_channel = 1
 
     else:
         print("config.dataset should be either 'darcy' or 'NS'.")
@@ -65,7 +72,7 @@ def main(config):
     # model = FNO2d(modes, modes, width, depth, in_channel=11, out_channel=2).to(device)
     # model = FNO2d_doubled(modes,modes,width,depth, in_channel=11, out_channel=2).to(device)
     # model = FNOmlpRe(modes_list, modes_list, width_list, depth=3, mlp=True, in_channel=11, out_channel=2).cuda()
-    model = FNO_mlp(width, modes, modes, depth, in_channel=11, out_channel=2).to(device)
+    model = FNO_mlp(width, modes, modes, depth, in_channel=in_channel, out_channel=out_channel).to(device)
     print('FNO2d parameter count: ', count_params(model))
 
     #
@@ -75,6 +82,7 @@ def main(config):
     start_selfcon = config.epochs_selfcon
     track_selfcon = config.track_selfcon
     augmentation_samples = config.augmentation_samples
+    sample_virtual_instance = config.sample_virtual_instance
 
     use_augmentation = config.augmentation_loss
     iterations = epochs * max(1, n_train // batch_size)
@@ -116,17 +124,23 @@ def main(config):
                         loss += 1.0 * loss_aug
                         train_aug += loss_aug.item()
 
-                    # unsupervised training (selfconsistency constraint)
-                    if data.selfcon and (track_selfcon or epoch >= start_selfcon):
-                        x_sc = d['selfcon'][0]
-                        x_sc = x_sc.to(device)
-                        #
-                        # loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
-                        loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
-                        if epoch >= start_selfcon:
-                            loss += 0.1 * loss_sc
-
+                    if sample_virtual_instance:
+                        rate = 2
+                        new_x, rate = sample_helm(input=x, rate=rate)
+                        new_re = re * rate
+                        loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re)
+                        loss += 0.1 * loss_sc
                         train_sc += loss_sc.item()
+
+                    # # unsupervised training (selfconsistency constraint)
+                    # if data.selfcon and (track_selfcon or epoch >= start_selfcon):
+                    #     x_sc = d['selfcon'][0]
+                    #     x_sc = x_sc.to(device)
+                    #     #
+                    #     loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
+                    #     if epoch >= start_selfcon:
+                    #         loss += 0.1 * loss_sc
+                    #     train_sc += loss_sc.item()
                 #
                 loss.backward()
                 optimizer.step()
@@ -174,6 +188,7 @@ if __name__ == '__main__':
     parser.add_argument('-n', "--name",
                         type=str,
                         default='helmholtz_mlp',
+                        # default='ns',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,

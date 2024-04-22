@@ -32,7 +32,7 @@ def LossSelfconsistency(model,x,loss_fn,y=None,re=None,):
     # If y is given, we use it as the ground truth. the gradient only flow to y_small_
     if y!=None:
         # resample on smaller domain
-        i, j, h, w, re = transform_xy.get_params(x, y, re)
+        i, j, h, w, re = transform_xy.get_params(x, y, re=re)
         #
         x_small = transform_xy.crop(x, i, j, h, w)
         y_small = transform_xy.crop(y, i, j, h, w)
@@ -47,7 +47,7 @@ def LossSelfconsistency(model,x,loss_fn,y=None,re=None,):
         y = model(x, re)
 
         # resample on smaller domain
-        i,j,h,w,re = transform_xy.get_params(x,y)
+        i,j,h,w,re = transform_xy.get_params(x, y, re=re)
         #
         x_small = transform_xy.crop(x,i,j,h,w)
         y_small = transform_xy.crop(y,i,j,h,w)

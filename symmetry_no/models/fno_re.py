@@ -27,24 +27,27 @@ class SpectralConv2d(nn.Module):
         """
 
         self.n_feature = 5
-        in_channels = in_channels
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.modes1 = modes1
         self.modes2 = modes2
         self.p = MLP_complex(2*self.n_feature + self.n_feature, in_channels, in_channels)  # k_mat + Re
 
+        self.norm1 = nn.GroupNorm(1, in_channels)
+        self.norm2 = nn.GroupNorm(1, out_channels)
+
+        # in_channels = in_channels + 2*self.n_feature + self.n_feature
         self.scale = (1 / (in_channels * out_channels))
         # if self.modes1 == 0:
-        self.weights1 = nn.Parameter(self.scale * torch.rand(in_channels, hidden_channels, dtype=torch.cfloat))
-        self.bias1 = nn.Parameter(self.scale * torch.rand(1,hidden_channels,1,1, dtype=torch.cfloat))
-        self.weights2 = nn.Parameter(self.scale * torch.rand(hidden_channels, out_channels, dtype=torch.cfloat))
-        self.bias2 = nn.Parameter(self.scale * torch.rand(1,out_channels,1,1, dtype=torch.cfloat))
+        # self.weights1 = nn.Parameter(self.scale * torch.rand(in_channels, hidden_channels, dtype=torch.cfloat))
+        # self.bias1 = nn.Parameter(self.scale * torch.rand(1,hidden_channels,1,1, dtype=torch.cfloat))
+        # self.weights2 = nn.Parameter(self.scale * torch.rand(hidden_channels, out_channels, dtype=torch.cfloat))
+        # self.bias2 = nn.Parameter(self.scale * torch.rand(1,out_channels,1,1, dtype=torch.cfloat))
         # else:
         self.weights3 = nn.Parameter(
-            self.scale * torch.rand(in_channels+2*self.n_feature + self.n_feature, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
+            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
         self.weights4 = nn.Parameter(
-            self.scale * torch.rand(in_channels+2*self.n_feature + self.n_feature, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
+            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
 
     # Complex multiplication
     def compl_mul2d(self, input, weights):
@@ -79,18 +82,21 @@ class SpectralConv2d(nn.Module):
         return re_mat
 
     def forward(self, x, Re):
+        x = self.norm1(x)
+
         #Compute Fourier coeffcients up to factor of e^(- something constant)
-        x_ft = torch.fft.rfft2(x)
+        x_ft = torch.fft.rfft2(x, norm='forward')
+        # x_ft = x_ft * 100
 
         # add wavenumber k_mat
         k_mat = self.get_k(x.shape[0], x.shape[-2], x.shape[-1], device=x.device)
         re_mat = self.embed_re(x.shape[-1], Re)
         feature = self.p(torch.cat([k_mat, re_mat], dim=1))
-        x_ft = torch.cat([x_ft, k_mat, re_mat], dim=1)
-        x_ft = x_ft #+ feature
+        # x_ft = torch.cat([x_ft, k_mat, re_mat], dim=1)
+        x_ft = x_ft * feature
 
-        # # if self.modes1 == 0:
-        #     # MLP layer
+        # if self.modes1 == 0:
+            # MLP layer
         # out_ft = self.compl_mul2d(x_ft, self.weights1)
         # out_ft = out_ft + self.bias1
         #
@@ -111,7 +117,9 @@ class SpectralConv2d(nn.Module):
 
         # out_ft = out_ft1 + out_ft2
         #Return to physical space
-        x = torch.fft.irfft2(out_ft2, s=(x.size(-2), x.size(-1)))
+        x = torch.fft.irfft2(out_ft2, s=(x.size(-2), x.size(-1)), norm='forward')
+
+        x = self.norm2(x)
         return x
 
 class MLP(nn.Module):
@@ -179,7 +187,8 @@ class FNO_mlp(nn.Module):
         for _ in range(depth):
             self.conv.append(SpectralConv2d(self.width, self.width, self.width, modes1, modes2))
             self.mlp.append(MLP(self.width, self.width, self.width))
-            self.w.append(nn.Conv2d(self.width, self.width, 1))
+            # self.w.append(nn.Conv2d(self.width, self.width, 1))
+            self.w.append(nn.Conv2d(self.width, self.width, 3, padding="same"))
         #
         self.conv = nn.ModuleList(self.conv)
         self.mlp = nn.ModuleList(self.mlp)

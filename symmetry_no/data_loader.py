@@ -579,7 +579,7 @@ class NSReader:
 
         if Re == None:
             Re = 1
-        self.re = Re * torch.ones(self.x.shape[0], 1, requires_grad=False)
+        self.re = Re * torch.ones(self.x.shape[0], 1, requires_grad=False) // 100
 
 
         def __len__(self):
@@ -603,7 +603,7 @@ class NSReader:
         # Filter out boundary conditions (each boundary condition --> 1 channel)
         x[:, 0, :, :] = u0
 
-        # x = DarcyExtractBC(x, u1) # maybe no boundary for periodic cases
+        x = DarcyExtractBC(x, u1) # maybe no boundary for periodic cases
         y = u1
         print(x.shape, y.shape)
 
