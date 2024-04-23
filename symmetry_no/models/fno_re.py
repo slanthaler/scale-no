@@ -200,10 +200,10 @@ class FNO_mlp(nn.Module):
         # x (batch, in_channels, X, Y)
         # re (batch, )
 
-        std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
-        x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
-        re = re.reshape(-1, 1, 1, 1)
+        # std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
+        # x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
 
+        re = re.reshape(-1, 1, 1, 1)
         grid, grid_re = self.get_grid(x.shape, re, x.device)
         re = re * torch.ones((x.shape[0], 1, x.shape[2], x.shape[3]), requires_grad=False, device=x.device)
         x = torch.cat((x, grid, re), dim=1) # 1 is the channel dimension
@@ -219,8 +219,8 @@ class FNO_mlp(nn.Module):
             x = F.gelu(x)
 
         x = self.q(x)
-        x = x*std
-        del std
+        # x = x*std
+        # del std
 
         return x
 

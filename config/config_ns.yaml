@@ -35,18 +35,18 @@ data_dir: '/media/wumming/HHD/HHD_data/KF/'
 train_data: 'KF_f0_Re1000_N25_T500_S256_part0.pt'
 train_re: 1000
 test_data: [
-#  'KF_f0_Re250_N25_T500_S256_part0.pt',
-#  'KF_f0_Re500_N25_T500_S256_part0.pt',
+  'KF_f0_Re250_N25_T500_S256_part0.pt',
+  'KF_f0_Re500_N25_T500_S256_part0.pt',
   'KF_f0_Re1000_N25_T500_S256_part0.pt',
-#  'KF_f0_Re2000_N25_T500_S256_part0.pt',
-#  'KF_f0_Re4000_N25_T500_S256_part0.pt'
+  'KF_f0_Re2000_N25_T500_S256_part0.pt',
+  'KF_f0_Re4000_N25_T500_S256_part0.pt'
 ]
 test_re: [
-#  250,
-#  500,
+  250,
+  500,
   1000,
-#  2000,
-#  4000
+  2000,
+  4000
 ]
 selfcon_data:
 
@@ -54,3 +54,4 @@ selfcon_data:
 augmentation_loss: True
 augmentation_samples: 5
 use_augmentation:
+sample_virtual_instance: True

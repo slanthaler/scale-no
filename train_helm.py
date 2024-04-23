@@ -107,6 +107,8 @@ def main(config):
         for i, train_loader in enumerate(data.train_loaders):
             for d in train_loader:
                 x, y, re = d
+                x = x[..., ::2, ::2]
+                y = y[..., ::2, ::2]
                 x, y, re = x.to(device), y.to(device), re.to(device)
 
                 # supervised training
@@ -125,11 +127,11 @@ def main(config):
                         train_aug += loss_aug.item()
 
                     if sample_virtual_instance:
-                        rate = 2
+                        rate = torch.rand(1) + 1
                         new_x, rate = sample_helm(input=x, rate=rate)
                         new_re = re * rate
                         loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re)
-                        loss += 0.1 * loss_sc
+                        loss += 1.0 * loss_sc
                         train_sc += loss_sc.item()
 
                     # # unsupervised training (selfconsistency constraint)
@@ -152,6 +154,8 @@ def main(config):
             with torch.no_grad():
                 for i, test_loader in enumerate(data.test_loaders):
                     for x, y, re in test_loader:
+                        x = x[..., ::2, ::2]
+                        y = y[..., ::2, ::2]
                         x, y, re = x.to(device), y.to(device), re.to(device)
 
                         out = model(x, re)

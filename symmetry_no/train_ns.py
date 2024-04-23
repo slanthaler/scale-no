@@ -12,7 +12,7 @@ from symmetry_no.models.fno2d_doubled import *
 from symmetry_no.models.fno_u import *
 from symmetry_no.models.fno_re import *
 from symmetry_no.selfconsistency import LossSelfconsistency
-
+from symmetry_no.gaussian_random_field import sample_NS
 
 def main(config):
     #
@@ -66,7 +66,6 @@ def main(config):
 
     # model = FNO_U(modes_list, modes_list, width_list, depth=3, mlp=True, in_channel=7, out_channel=1).cuda()
     model = FNO_mlp(width, modes1, modes2, depth, in_channel=7, out_channel=1).to(device)
-    # model = FNO2d(modes1, modes2, width, depth, in_channel=7, out_channel=1).to(device)
     print('FNO2d parameter count: ', count_params(model))
 
     #
@@ -75,6 +74,8 @@ def main(config):
     epoch_test = config.epoch_test
     start_selfcon = config.epochs_selfcon
     track_selfcon = config.track_selfcon
+    augmentation_samples = config.augmentation_samples
+    sample_virtual_instance = config.sample_virtual_instance
 
     use_augmentation = config.augmentation_loss
     iterations = epochs * max(1, n_train // batch_size)
@@ -114,17 +115,24 @@ def main(config):
                 loss += 1.0 * loss_aug
                 train_aug += loss_aug.item()
 
-            # unsupervised training (selfconsistency constraint)
-            if data.selfcon and (track_selfcon or epoch >= start_selfcon):
-                x_sc = d['selfcon'][0]
-                x_sc = x_sc.to(device)
-                #
-                # loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
-                loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
-                if epoch >= start_selfcon:
-                    loss += 0.1 * loss_sc
-
+            if sample_virtual_instance:
+                rate = torch.rand(1) + 1
+                new_x, rate = sample_NS(input=x, rate=rate)
+                new_re = re * rate
+                loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re)
+                loss += 0.5 * loss_sc * (epoch/epochs)
                 train_sc += loss_sc.item()
+
+            # # unsupervised training (selfconsistency constraint)
+            # if data.selfcon and (track_selfcon or epoch >= start_selfcon):
+            #     x_sc = d['selfcon'][0]
+            #     x_sc = x_sc.to(device)
+            #     #
+            #     # loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
+            #     loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
+            #     if epoch >= start_selfcon:
+            #         loss += 0.1 * loss_sc
+            #     train_sc += loss_sc.item()
 
             #
             loss.backward()
