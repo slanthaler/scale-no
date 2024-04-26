@@ -102,8 +102,8 @@ class FNO2d(nn.Module):
         for _ in range(depth):
             self.conv.append(SpectralConv2d(self.width, self.width, self.modes1, self.modes2))
             self.mlp.append(MLP(self.width, self.width, self.width))
-            # self.w.append(nn.Conv2d(self.width, self.width, 1))
-            self.w.append(nn.Conv2d(self.width, self.width, 3, padding="same"))
+            self.w.append(nn.Conv2d(self.width, self.width, 1))
+            # self.w.append(nn.Conv2d(self.width, self.width, 3, padding="same"))
         #
         self.conv = nn.ModuleList(self.conv)
         self.mlp = nn.ModuleList(self.mlp)

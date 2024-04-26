@@ -12,7 +12,7 @@ from symmetry_no.models.fno2d_doubled import *
 from symmetry_no.models.fno_u import *
 from symmetry_no.models.fno_re import *
 from symmetry_no.selfconsistency import LossSelfconsistency
-
+from symmetry_no.gaussian_random_field import sample_Darcy, sample_NS
 
 def main(config):
     #
@@ -48,24 +48,25 @@ def main(config):
         print("config.dataset should be either 'darcy' or 'NS'.")
 
     # Initialize our model, recursively go over all modules and convert their parameters and buffers to CUDA tensors (if device is set to cuda)
-
+    modes1 = config.modes
+    modes2 = config.modes
     width = config.width
     depth = config.depth
-    modes = config.modes
 
-    # model = FNO2d(modes1, modes2, width, depth).to(device)
+    ### U-shape FNO
+    # S = config.S
+    # modes = S//2
+    # modes_list = []
+    # width_list = []
+    # for i in range(depth):
+    #     n = 2**i
+    #     modes_list.append(modes//n)
+    #     width_list.append(n*width)
+
+    model = FNO2d(modes1, modes2, width, depth).to(device)
     # model = FNO2d_doubled(modes1, modes2, width, depth).to(device)
-    modes_list = []
-    width_list = []
-    for i in range(depth):
-        n = 2**i
-        modes_list.append(modes//n)
-        width_list.append(n*width)
-
-    # model = FNO2d(modes, modes, width, depth, in_channel=11, out_channel=2).to(device)
-    # model = FNO2d_doubled(modes,modes,width,depth, in_channel=11, out_channel=2).to(device)
-    # model = FNOmlpRe(modes_list, modes_list, width_list, depth=3, mlp=True, in_channel=11, out_channel=2).cuda()
-    model = FNO_mlp(width, modes, modes, depth, in_channel=7, out_channel=1).to(device)
+    # model = FNO_U(modes_list, modes_list, width_list, depth=3, mlp=True, in_channel=7, out_channel=1).cuda()
+    # model = FNO_mlp(width, modes1, modes2, depth, in_channel=7, out_channel=1).to(device)
     print('FNO2d parameter count: ', count_params(model))
 
     #
@@ -75,6 +76,7 @@ def main(config):
     start_selfcon = config.epochs_selfcon
     track_selfcon = config.track_selfcon
     augmentation_samples = config.augmentation_samples
+    sample_virtual_instance = config.sample_virtual_instance
 
     use_augmentation = config.augmentation_loss
     iterations = epochs * max(1, n_train // batch_size)
@@ -96,58 +98,64 @@ def main(config):
         train_sc = 0
 
         # training loop
-        for i, train_loader in enumerate(data.train_loaders):
-            for d in train_loader:
-                x, y, re = d
-                x, y, re = x.to(device), y.to(device), re.to(device)
+        for d in data.train_loader:
+            x, y = d['train']
+            x, y = x.to(device), y.to(device)
 
-                # supervised training
-                optimizer.zero_grad()
-                out = model(x, re)
-                # DO WE NEED TO NORMALIZE THE OUTPUT??
+            # supervised training
+            optimizer.zero_grad()
+            out = model(x)
+            # DO WE NEED TO NORMALIZE THE OUTPUT??
 
-                loss = loss_fn(out.view(batch_size, -1), y.view(batch_size, -1))
-                train_l2 += loss.item()
+            loss = loss_fn(out.view(batch_size, -1), y.view(batch_size, -1))
+            train_l2 += loss.item()
 
-                # augmentation via sub-sampling
-                for j in range(augmentation_samples):
-                    if use_augmentation:
-                        loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re)
-                        loss += 1.0 * loss_aug
-                        train_aug += loss_aug.item()
+            # augmentation via sub-sampling
+            if use_augmentation:
+                loss_aug = LossSelfconsistency(model, x, loss_fn, y=y)
+                loss += 1.0 * loss_aug
+                train_aug += loss_aug.item()
 
-                    # unsupervised training (selfconsistency constraint)
-                    if data.selfcon and (track_selfcon or epoch >= start_selfcon):
-                        x_sc = d['selfcon'][0]
-                        x_sc = x_sc.to(device)
-                        #
-                        # loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
-                        loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
-                        if epoch >= start_selfcon:
-                            loss += 0.1 * loss_sc
+            if sample_virtual_instance:
+                rate = torch.rand(1)*4*(epoch/epochs) + 1
+                new_x, rate = sample_Darcy(input=x, rate=rate, keepsize=True)
+                loss_sc = LossSelfconsistency(model, new_x, loss_fn)
+                loss += 0.5 * loss_sc * (epoch/epochs)
+                train_sc += loss_sc.item()
 
-                        train_sc += loss_sc.item()
-                #
-                loss.backward()
-                optimizer.step()
-                scheduler.step()
+            # # unsupervised training (selfconsistency constraint)
+            # if data.selfcon and (track_selfcon or epoch >= start_selfcon):
+            #     x_sc = d['selfcon'][0]
+            #     x_sc = x_sc.to(device)
+            #     #
+            #     # loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
+            #     loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
+            #     if epoch >= start_selfcon:
+            #         loss += 0.1 * loss_sc
+            #     train_sc += loss_sc.item()
+
+            #
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
+
         #
         model.eval()
         test_l2 = np.zeros((len(data.test_loaders),))
         if epoch % epoch_test == 0:
             with torch.no_grad():
                 for i, test_loader in enumerate(data.test_loaders):
-                    for x, y, re in test_loader:
-                        x, y, re = x.to(device), y.to(device), re.to(device)
+                    for x, y in test_loader:
+                        x, y = x.to(device), y.to(device)
 
-                        out = model(x, re)
+                        out = model(x)
                         # DO WE NEED TO NORMALIZE THE OUTPUT??
                         test_l2[i] += loss_fn(out.view(batch_size, -1), y.view(batch_size, -1)).item()
 
         # normalize losses
-        train_l2 /= n_train * len(data.train_loaders)
-        train_sc /= n_train * len(data.train_loaders) * augmentation_samples
-        train_aug /= n_train * len(data.train_loaders) * augmentation_samples
+        train_l2 /= n_train
+        train_sc /= n_train
+        train_aug /= n_train
         test_l2 /= n_test
 
         t2 = default_timer()
@@ -173,8 +181,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        # default='helmholtz_mlp',
-                        default='ns',
+                        default='darcy',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,

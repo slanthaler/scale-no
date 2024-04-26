@@ -55,5 +55,6 @@ def LossSelfconsistency(model,x,loss_fn,y=None,re=None,):
         x_small = ExtractBD(x_small,y_small)
         #
         y_small_ = model(x_small, re)
-        return loss_fn(y_small_.view(batch_size,-1).detach(), y_small.view(batch_size,-1))
+        # return loss_fn(y_small_.view(batch_size,-1).detach(), y_small.view(batch_size,-1))
+        return loss_fn(y_small.view(batch_size, -1), y_small_.view(batch_size, -1).detach())
 

@@ -52,18 +52,19 @@ def main(config):
     modes2 = config.modes
     width = config.width
     depth = config.depth
-    S = config.S
-    modes = S//2
+
+    ### U-shape FNO
+    # S = config.S
+    # modes = S//2
+    # modes_list = []
+    # width_list = []
+    # for i in range(depth):
+    #     n = 2**i
+    #     modes_list.append(modes//n)
+    #     width_list.append(n*width)
 
     # model = FNO2d(modes1, modes2, width, depth).to(device)
     # model = FNO2d_doubled(modes1, modes2, width, depth).to(device)
-    modes_list = []
-    width_list = []
-    for i in range(depth):
-        n = 2**i
-        modes_list.append(modes//n)
-        width_list.append(n*width)
-
     # model = FNO_U(modes_list, modes_list, width_list, depth=3, mlp=True, in_channel=7, out_channel=1).cuda()
     model = FNO_mlp(width, modes1, modes2, depth, in_channel=7, out_channel=1).to(device)
     print('FNO2d parameter count: ', count_params(model))
@@ -116,8 +117,8 @@ def main(config):
                 train_aug += loss_aug.item()
 
             if sample_virtual_instance:
-                rate = torch.rand(1) + 1
-                new_x, rate = sample_NS(input=x, rate=rate)
+                rate = torch.rand(1)*4*(epoch/epochs) + 1
+                new_x, rate = sample_NS(input=x, rate=rate, keepsize=True)
                 new_re = re * rate
                 loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re)
                 loss += 0.5 * loss_sc * (epoch/epochs)
@@ -181,7 +182,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='ns',
+                        default='darcy',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,

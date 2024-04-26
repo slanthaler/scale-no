@@ -199,9 +199,13 @@ class FNO_mlp(nn.Module):
     def forward(self, x, re=None):
         # x (batch, in_channels, X, Y)
         # re (batch, )
+        if re==None:
+            re = torch.ones(x.shape[0], device=x.device)
 
-        # std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
+        std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
         # x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
+        # std = torch.std(x.clone(), dim=[1, 2, 3], keepdim=True)
+        # x = x / std
 
         re = re.reshape(-1, 1, 1, 1)
         grid, grid_re = self.get_grid(x.shape, re, x.device)
@@ -219,8 +223,8 @@ class FNO_mlp(nn.Module):
             x = F.gelu(x)
 
         x = self.q(x)
-        # x = x*std
-        # del std
+        x = x*std
+        del std
 
         return x
 

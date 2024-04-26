@@ -1,7 +1,9 @@
 ---
 #
-name: 'default'
-run_name: 'GRFlength'
+name: 'darcy'
+run_name: 'GRFlength_aug_sc'
+dataset: 'darcy'
+
 # fno2d
 modes: 20
 width: 32
@@ -12,6 +14,7 @@ learning_rate: 1e-3
 weight_decay: 1e-4
 batch_size: 16
 epochs: 200
+epoch_test: 5
 
 n_train: 1024
 n_test: 128
@@ -37,5 +40,7 @@ test_data: ['darcy_test_GRFlength_Nsamp1024_Ns64_alpha0.50_length2.00_alphag1.00
 selfcon_data:
 
 #
-augmentation_loss: true
+augmentation_loss: True
+augmentation_samples: 5
 use_augmentation:
+sample_virtual_instance: True
