@@ -117,7 +117,7 @@ def main(config):
                 train_aug += loss_aug.item()
 
             if sample_virtual_instance:
-                rate = torch.rand(1)*4*(epoch/epochs) + 1
+                rate = torch.rand(1)*3*(epoch/epochs) + 1
                 new_x, rate = sample_NS(input=x, rate=rate, keepsize=True)
                 new_re = re * rate
                 loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re)
@@ -182,7 +182,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='darcy',
+                        default='ns',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,

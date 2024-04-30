@@ -117,7 +117,7 @@ def main(config):
                 train_aug += loss_aug.item()
 
             if sample_virtual_instance:
-                rate = torch.rand(1)*4*(epoch/epochs) + 1
+                rate = torch.rand(1)*3*(epoch/epochs) + 1
                 new_x, rate = sample_Darcy(input=x, rate=rate, keepsize=True)
                 loss_sc = LossSelfconsistency(model, new_x, loss_fn)
                 loss += 0.5 * loss_sc * (epoch/epochs)

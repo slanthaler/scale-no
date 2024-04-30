@@ -6,13 +6,17 @@ from timeit import default_timer
 
 class GaussianRF(object):
 
-    def __init__(self, dim, size, alpha=2, tau=3, sigma=None, exp=False, boundary="periodic", device=None):
+    def __init__(self, dim, size, alpha=2, tau=3, sigma=None, exp=False, periodic_boundary=False, device=None):
 
         self.dim = dim
         self.device = device
+        self.periodic_boundary = periodic_boundary
 
         if sigma is None:
             sigma = tau**(0.5*(2*alpha - self.dim))
+
+        if not periodic_boundary:
+            size = size *2
 
         k_max = size//2
 
@@ -57,8 +61,12 @@ class GaussianRF(object):
 
         coeff = torch.randn(N, *self.size, dtype=torch.cfloat, device=self.device)
         coeff = self.sqrt_eig * coeff
+        random_field = torch.fft.ifftn(coeff, dim=list(range(-1, -self.dim - 1, -1)))
 
-        return torch.fft.ifftn(coeff, dim=list(range(-1, -self.dim - 1, -1)))
+        if not self.periodic_boundary:
+            random_field = random_field[..., :random_field.shape[-2]//2, :random_field.shape[-1]//2]
+
+        return random_field
 
 
 
@@ -76,11 +84,12 @@ def sample_Darcy(rate, input=None, alpha_a=0.5, alpha_g=1, sigma_g=1, keepsize=F
 
     sigma = 1/rate
     a_GRF = GaussianRF(dim=2, size=size, alpha=alpha_a, sigma=sigma, exp=True)
-    a = a_GRF.sample(N).real
+    a = a_GRF.sample(N).real.to(device)
     a[a > 0] = 12
     a[a <= 0] = 2
     g_GRF = GaussianRF(dim=2, size=size, alpha=alpha_g, sigma=sigma_g, exp=True)
-    g = g_GRF.sample(N).real
+    g = g_GRF.sample(N).real.to(device)
+    g = g / torch.std(g) * torch.std(input[:, 1:])
 
     x = torch.zeros(N, 5, size, size, dtype=torch.float32, device=device)
     x[:, 0] = a
