@@ -1,20 +1,32 @@
 import sys
+import os
 import wandb
 import argparse
+import torch
+import torch.distributed as dist
+import torch.multiprocessing as mp
+from torch.nn.parallel import DistributedDataParallel as DDP
+os.environ["TORCH_DISTRIBUTED_DEBUG"] = "INFO"
 
 # sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
-
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
 from symmetry_no.config_helper import ReadConfig
 from symmetry_no.wandb_utilities import *
 from symmetry_no.models.fno2d import *
 from symmetry_no.models.fno2d_doubled import *
-from symmetry_no.models.fno_u import *
+from symmetry_no.models.fno_u_ddp import *
 from symmetry_no.models.fno_re import *
 from symmetry_no.selfconsistency import LossSelfconsistency
 from symmetry_no.gaussian_random_field import sample_NS
 
-def main(config):
+
+def main(rank, world_size, config, args):
+    # Initialize process group
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "12355"
+    torch.cuda.set_device(rank)
+    dist.init_process_group(backend='nccl', world_size=world_size, rank=rank)
+
     #
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
@@ -56,18 +68,16 @@ def main(config):
 
     ### U-shape FNO
     S = config.S
-    modes = S//2
+    modes = S // 2
     modes_list = []
     width_list = []
     for i in range(depth):
-        n = 2**i
-        modes_list.append(modes//n)
-        width_list.append(n*width)
+        n = 2 ** i
+        modes_list.append(modes // n)
+        width_list.append(n * width)
 
-    # model = FNO2d(modes1, modes2, width, depth).to(device)
-    # model = FNO2d_doubled(modes1, modes2, width, depth).to(device)
     model = FNO_U(modes_list, modes_list, width_list, depth=3, mlp=mlp, in_channel=7, out_channel=1).to(device)
-    # model = FNO_mlp(width, modes1, modes2, depth, mlp=mlp, in_channel=7, out_channel=1).to(device)
+    model = DDP(model, device_ids=[rank], find_unused_parameters=False)
     print('FNO2d parameter count: ', count_params(model))
 
     #
@@ -87,6 +97,10 @@ def main(config):
     # WandB – wandb.watch() automatically fetches all layer dimensions, gradients, model parameters and logs them automatically to your dashboard.
     # Using log="all" log histograms of parameter values in addition to gradients
     if args.wandb:
+        wandb.login(key=get_wandb_api_key())
+        wandb.init(project="Symmetry-NO",
+                   name=config.run_name,
+                   config=config)
         wandb.watch(model, log_freq=20, log="all")
 
     loss_fn = LpLoss(size_average=False)
@@ -106,7 +120,6 @@ def main(config):
             # supervised training
             optimizer.zero_grad()
             out = model(x, re)
-            # DO WE NEED TO NORMALIZE THE OUTPUT??
 
             loss = loss_fn(out.view(batch_size, -1), y.view(batch_size, -1))
             train_l2 += loss.item()
@@ -118,11 +131,11 @@ def main(config):
                 train_aug += loss_aug.item()
 
             if sample_virtual_instance and (epoch >= start_selfcon):
-                rate = torch.rand(1)*5*(epoch/epochs) + 1
+                rate = torch.rand(1) * 5 * (epoch / epochs) + 1
                 new_x, rate = sample_NS(input=x, rate=rate, keepsize=True)
                 new_re = re * rate
                 loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re)
-                loss += 0.5 * loss_sc * (epoch/epochs)
+                loss += 0.5 * loss_sc * (epoch / epochs)
                 train_sc += loss_sc.item()
 
             loss.backward()
@@ -162,6 +175,8 @@ def main(config):
         torch.save(model.state_dict(), "model.h5")
     wandb.save('model.h5')
 
+    dist.destroy_process_group()
+
 
 #
 if __name__ == '__main__':
@@ -186,16 +201,11 @@ if __name__ == '__main__':
     config = ReadConfig(args.name, args.config)
 
     # WandB – Initialize a new run
-    if args.wandb:
-        wandb.login(key=get_wandb_api_key())
-        wandb.init(project="Symmetry-NO",
-                   name=config.run_name,
-                   config=config)
-
     #
     print('Command line inputs: --')
     print('Config name: ', args.name)
     print('Config file: ', args.config, flush=True)
 
     # run the main training loop
-    main(config)
+    world_size = torch.cuda.device_count()
+    mp.spawn(main, args=(world_size, config, args), nprocs=world_size)

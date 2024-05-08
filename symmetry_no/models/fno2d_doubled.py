@@ -46,9 +46,9 @@ class SpectralConv2d_doubled(nn.Module):
     def forward(self, x):
         batchsize, C, Nx, Ny = x.shape
         # Compute Fourier coeffcients up to factor of e^(- something constant)
-        sub = 8
-        # x = torch.cat([x, -x.flip(dims=[-2])[..., 1:Nx-1:sub, :]], dim=-2)
-        # x = torch.cat([x, -x.flip(dims=[-1])[..., :, 1:Ny-1:sub]], dim=-1)
+        sub = 4
+        x = torch.cat([x, -x.flip(dims=[-2])[..., 1:Nx-1:sub, :]], dim=-2)
+        x = torch.cat([x, -x.flip(dims=[-1])[..., :, 1:Ny-1:sub]], dim=-1)
         x_ft = torch.fft.rfft2(x)
 
         m1 = np.minimum(self.modes1, Nx//2)
@@ -64,7 +64,7 @@ class SpectralConv2d_doubled(nn.Module):
 
         # Return to physical space
         x = torch.fft.irfft2(out_ft, s=(x.size(-2), x.size(-1)))
-        # x = x[:,:,:Nx,:Ny]
+        x = x[:,:,:Nx,:Ny]
         return x
 
 
@@ -124,8 +124,8 @@ class FNO2d_doubled(nn.Module):
 
     def forward(self, x, re=None):
 
-        # std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
-        # x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
+        std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
+        x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
 
         grid = self.get_grid(x.shape, x.device)
         x = torch.cat((x, grid), dim=1) # 1 is the channel dimension
@@ -139,8 +139,8 @@ class FNO2d_doubled(nn.Module):
             x = F.gelu(x)
 
         x = self.q(x)
-        # x = x*std
-        # del std
+        x = x*std
+        del std
         return x
 
     def get_grid(self, shape, device):

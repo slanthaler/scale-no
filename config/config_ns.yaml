@@ -8,6 +8,7 @@ dataset: 'NS'
 modes: 32
 width: 32
 depth: 4
+mlp: False
 
 # training
 learning_rate: 1e-3
@@ -22,7 +23,8 @@ n_selfcon: 20
 epochs_selfcon: 10 # now epochs_selfcon is the epoch to start self-consistency loss
 epoch_test: 5
 
-S: 128 # truncate to sub-domain
+truncate: 2 # truncate to sub-domain
+S: 128
 T: 300
 sub_s: 1
 sub_t: 1
@@ -30,7 +32,8 @@ sub_t: 1
 #grid_size: 128
 
 # datasets
-data_dir: '/media/wumming/HHD/HHD_data/KF/'
+data_dir: '/media/wumming/HHD/HHD_data/KF'
+
 
 train_data: 'KF_f0_Re1000_N25_T500_S256_part0.pt'
 train_re: 1000
@@ -39,14 +42,16 @@ test_data: [
   'KF_f0_Re500_N25_T500_S256_part0.pt',
   'KF_f0_Re1000_N25_T500_S256_part0.pt',
   'KF_f0_Re2000_N25_T500_S256_part0.pt',
-  'KF_f0_Re4000_N25_T500_S256_part0.pt'
+  'KF_f0_Re4000_N25_T500_S256_part0.pt',
+  'KF_f0_Re10000_N10_T300_S1024_dt_adpt_dx_2048_part0.pt',
 ]
 test_re: [
   250,
   500,
   1000,
   2000,
-  4000
+  4000,
+  10000,
 ]
 selfcon_data:
 

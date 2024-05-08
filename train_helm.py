@@ -84,7 +84,7 @@ def main(config):
     augmentation_samples = config.augmentation_samples
     sample_virtual_instance = config.sample_virtual_instance
 
-    use_augmentation = config.augmentation_loss
+    augmentation_loss = config.augmentation_loss
     iterations = epochs * max(1, n_train // batch_size)
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=iterations)
@@ -107,8 +107,6 @@ def main(config):
         for i, train_loader in enumerate(data.train_loaders):
             for d in train_loader:
                 x, y, re = d
-                x = x[..., ::2, ::2]
-                y = y[..., ::2, ::2]
                 x, y, re = x.to(device), y.to(device), re.to(device)
 
                 # supervised training
@@ -121,17 +119,17 @@ def main(config):
 
                 # augmentation via sub-sampling
                 for j in range(augmentation_samples):
-                    if use_augmentation:
+                    if augmentation_loss:
                         loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re)
-                        loss += 1.0 * loss_aug
+                        loss += augmentation_loss * loss_aug
                         train_aug += loss_aug.item()
 
-                    if sample_virtual_instance:
-                        rate = torch.rand(1) + 1
-                        new_x, rate = sample_helm(input=x, rate=rate)
+                    if sample_virtual_instance and (epoch >= start_selfcon):
+                        rate = torch.rand(1) * 3 * (epoch / epochs) + 1
+                        new_x, rate = sample_helm(input=x, rate=rate, keepsize=True)
                         new_re = re * rate
                         loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re)
-                        loss += 1.0 * loss_sc
+                        loss += 0.5 * loss_sc * (epoch / epochs)
                         train_sc += loss_sc.item()
 
                     # # unsupervised training (selfconsistency constraint)
@@ -154,8 +152,6 @@ def main(config):
             with torch.no_grad():
                 for i, test_loader in enumerate(data.test_loaders):
                     for x, y, re in test_loader:
-                        x = x[..., ::2, ::2]
-                        y = y[..., ::2, ::2]
                         x, y, re = x.to(device), y.to(device), re.to(device)
 
                         out = model(x, re)
@@ -191,7 +187,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='helmholtz_mlp',
+                        default='helmholtz',
                         # default='ns',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",

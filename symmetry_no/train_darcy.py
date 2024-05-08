@@ -63,8 +63,8 @@ def main(config):
     #     modes_list.append(modes//n)
     #     width_list.append(n*width)
 
-    model = FNO2d(modes1, modes2, width, depth).to(device)
-    # model = FNO2d_doubled(modes1, modes2, width, depth).to(device)
+    # model = FNO2d(modes1, modes2, width, depth).to(device)
+    model = FNO2d_doubled(modes1, modes2, width, depth).to(device)
     # model = FNO_U(modes_list, modes_list, width_list, depth=3, mlp=True, in_channel=7, out_channel=1).cuda()
     # model = FNO_mlp(width, modes1, modes2, depth, in_channel=7, out_channel=1).to(device)
     print('FNO2d parameter count: ', count_params(model))
@@ -89,6 +89,7 @@ def main(config):
         wandb.watch(model, log_freq=20, log="all")
 
     loss_fn = LpLoss(size_average=False)
+    loss_mse = nn.MSELoss(reduction='sum')
     for epoch in range(0, epochs + 1):  # config.epochs
         #
         model.train()
@@ -116,11 +117,11 @@ def main(config):
                 loss += 1.0 * loss_aug
                 train_aug += loss_aug.item()
 
-            if sample_virtual_instance:
+            if sample_virtual_instance and (epoch >= start_selfcon):
                 rate = torch.rand(1)*3*(epoch/epochs) + 1
                 new_x, rate = sample_Darcy(input=x, rate=rate, keepsize=True)
                 loss_sc = LossSelfconsistency(model, new_x, loss_fn)
-                loss += 0.5 * loss_sc * (epoch/epochs)
+                loss += 0.2 * loss_sc * (epoch/epochs)
                 train_sc += loss_sc.item()
 
             # # unsupervised training (selfconsistency constraint)
@@ -136,6 +137,7 @@ def main(config):
 
             #
             loss.backward()
+
             optimizer.step()
             scheduler.step()
 

@@ -544,7 +544,7 @@ class NSReader:
                  root_dir=ROOT_DIR + '/data/',
                  N=None,
                  order = "front",
-                 S=None, T=None, sub_s=None, sub_t=None,
+                 truncate=None, T=None, sub_s=None, sub_t=None,
                  Re = 1):
         """
         Args:
@@ -557,7 +557,7 @@ class NSReader:
         self.root_dir = root_dir
         self.N = N
         self.T = T
-        self.S = S
+        self.truncate = truncate
         self.sub_t = sub_t
         self.sub_s = sub_s
         self.order = order
@@ -571,15 +571,22 @@ class NSReader:
 
         # load data
         if order == "front":
-            data = torch.load(self.filepath)[:, ::sub_t, ::sub_s, ::sub_s][:N, :T+1, :S, :S]
+            data = torch.load(self.filepath)[:N]
+            print(self.filepath, data.shape)
+            truncate_S = data.shape[-1] // truncate
+            data = data[:, ::sub_t, ::sub_s, ::sub_s][:, :T+1, :truncate_S, :truncate_S]
+
         else:
-            data = torch.load(self.filepath)[:, ::sub_t, ::sub_s, ::sub_s][-N:, :T+1, :S, :S]
+            data = torch.load(self.filepath)[-N:]
+            print(self.filepath, data.shape)
+            truncate_S = data.shape[-1] // truncate
+            data = data[:, ::sub_t, ::sub_s, ::sub_s][:, :T+1, :truncate_S, :truncate_S]
 
         self.x, self.y = self.unpack_mat(data)
 
         if Re == None:
             Re = 1
-        self.re = Re * torch.ones(self.x.shape[0], 1, requires_grad=False) // 100
+        self.re = Re * torch.ones(self.x.shape[0], 1, requires_grad=False)
 
 
         def __len__(self):
@@ -591,21 +598,19 @@ class NSReader:
 
         """
         # massage the input data
-        u0 = data[:, 0:self.T].reshape(self.N*self.T, self.S, self.S)
-        u1 = data[:, 1:self.T+1].reshape(self.N*self.T, self.S, self.S)
+        S = data.shape[-1]
+        u0 = data[:, 0:self.T].reshape(self.N*self.T, S, S)
+        u1 = data[:, 1:self.T+1].reshape(self.N*self.T, S, S)
 
         nchannel = 5  # 1 coefficient + 4 BC
         n_samp = self.N * self.T
-        x = torch.zeros(n_samp,
-                        nchannel,
-                        self.S,
-                        self.S, dtype=torch.float32)
+        x = torch.zeros(n_samp, nchannel, S, S, dtype=torch.float32)
         # Filter out boundary conditions (each boundary condition --> 1 channel)
         x[:, 0, :, :] = u0
 
         x = DarcyExtractBC(x, u1) # maybe no boundary for periodic cases
         y = u1
-        print(x.shape, y.shape)
+        print(x.shape, y.shape, torch.mean(torch.abs(x)), torch.mean(torch.abs(y)))
 
         return x, y
 
@@ -620,11 +625,9 @@ class NSData:
         # Load training and test datasets
         self.train_file = config.train_data
         self.T = config.T
-        self.S = config.S
+        self.truncate = config.truncate
         self.sub_t = config.sub_t
         self.sub_s = config.sub_s
-
-        self.grid_size = self.S
 
         if isinstance(config.test_data, list):
             self.test_files = config.test_data
@@ -658,12 +661,11 @@ class NSData:
             root_dir=self.root_dir,
             N=self.n_train,
             order="front",
-            S=self.S, T=self.T, sub_s=self.sub_s, sub_t=self.sub_t,
+            truncate=self.truncate, T=self.T, sub_s=self.sub_s, sub_t=self.sub_t,
             Re=train_re,
         )
         # update the grid_size
-        if self.grid_size < 0:
-            self.grid_size = self.train_data.x.shape[-1]
+        self.grid_size = self.train_data.x.shape[-1]
 
         self.test_data = []
         for i, test_file in enumerate(self.test_files):
@@ -677,7 +679,7 @@ class NSData:
                          root_dir=self.root_dir,
                          N=self.n_test,
                          order="back",
-                         S=self.S, T=self.T, sub_s=self.sub_s, sub_t=self.sub_t,
+                         truncate=self.truncate, T=self.T, sub_s=self.sub_s, sub_t=self.sub_t,
                          Re=test_re,)
             )
         if self.selfcon:
@@ -686,7 +688,7 @@ class NSData:
                 root_dir=self.root_dir,
                 N=self.n_train,
                 order="front",
-                S=self.S, T=self.T, sub_s=self.sub_s, sub_t=self.sub_t,
+                truncate=self.truncate, T=self.T, sub_s=self.sub_s, sub_t=self.sub_t,
                 Re=config.selfcon_re,
             )
 

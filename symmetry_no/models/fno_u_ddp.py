@@ -71,18 +71,18 @@ class R_trans(nn.Module):
         self.norm_imag = nn.GroupNorm(4, c_out)
 
         if self.mlp:
-            self.weights = nn.Parameter(self.scale * torch.rand(self.c_in, self.c_out, dtype=torch.cfloat))
-            self.bias = nn.Parameter(self.scale * torch.rand(self.c_out, 1, 1, dtype=torch.cfloat))
+            self.weights = nn.Parameter(self.scale * torch.rand(self.c_in, self.c_out, 2))
+            self.bias = nn.Parameter(self.scale * torch.rand(self.c_out, 1, 1, 2))
         else:
-            self.weights = nn.Parameter(self.scale * torch.rand(self.c_in, self.c_out, self.modes1*2, self.modes2+1, dtype=torch.cfloat))
-            self.bias = nn.Parameter(self.scale * torch.rand(self.c_out, self.modes1*2, self.modes2+1, dtype=torch.cfloat))
+            self.weights = nn.Parameter(self.scale * torch.rand(self.c_in, self.c_out, self.modes1*2, self.modes2+1, 2))
+            self.bias = nn.Parameter(self.scale * torch.rand(self.c_out, self.modes1*2, self.modes2+1, 2))
 
     def forward(self, x):
+        weights = torch.view_as_complex(self.weights)
+        bias = torch.view_as_complex(self.bias)
         if self.mlp:
-            x = compl_mul2d(x, self.weights) + self.bias
+            x = compl_mul2d(x, weights) + bias
         else:
-            weights = self.weights
-            bias = self.bias
             # align input and weight, if input is smaller, we truncate the weight
             if x.shape[-2] < self.modes1*2:
                 weights = torch.cat([weights[..., :x.shape[-2]//2,:], weights[..., -x.shape[-2]//2:,:]], dim=-2)
@@ -198,18 +198,30 @@ class R_transformations(nn.Module):
         return x, skip_out
 
 class MLP(nn.Module):
-    def __init__(self, in_channels, out_channels, mid_channels, dtype=torch.float):
+    def __init__(self, in_channels, out_channels, mid_channels):
         super(MLP, self).__init__()
-        self.mlp1 = nn.Conv2d(in_channels, mid_channels, 1, dtype=dtype)
-        self.mlp2 = nn.Conv2d(mid_channels, out_channels, 1, dtype=dtype)
+        self.mlp1 = nn.Conv2d(in_channels, mid_channels, 1)
+        self.mlp2 = nn.Conv2d(mid_channels, out_channels, 1)
 
     def forward(self, x):
         x = self.mlp1(x)
-        if torch.is_complex(x):
-            x = F.gelu(x.real) + 1j * F.gelu(x.imag)
-        else:
-            x = F.gelu(x)
+        x = F.gelu(x)
         x = self.mlp2(x)
+        return x
+
+class MLP_complex(nn.Module):
+    def __init__(self, in_channels, out_channels, mid_channels):
+        super(MLP_complex, self).__init__()
+        self.out_channels = out_channels
+        self.mlp1 = nn.Conv3d(in_channels, mid_channels, 1)
+        self.mlp2 = nn.Conv3d(mid_channels, out_channels, 1)
+
+    def forward(self, x):
+        x = torch.view_as_real(x)
+        x = self.mlp1(x)
+        x = F.gelu(x)
+        x = self.mlp2(x)
+        x = torch.view_as_complex(x)
         return x
 
 
@@ -242,7 +254,7 @@ class FNO_U(nn.Module):
         # self.adain = AdaIN()
 
         self.p = MLP(self.in_c, self.width, 2*self.width) # input channel is 3: (a(x, y), x, y)
-        self.k_mlp = MLP(4*self.n_feature, 4*self.n_feature, 2*self.width, dtype=torch.cfloat)
+        self.k_mlp = MLP_complex(4*self.n_feature, 4*self.n_feature, 2*self.width)
         # self.feat_p = nn.Conv2d(1, self.width, kernel_size=1) # with k is 13
 
         self.k = K(self.n_feature) # and then pass this into FFT_Down
@@ -260,7 +272,7 @@ class FNO_U(nn.Module):
                 if l < self.layer - 1:
                     self.s[l].append(MLP(self.width_list[i], self.width_list[i], self.width_list[i]))
                 elif l == self.layer - 1:
-                    self.s[l].append(nn.Conv2d(self.width_list[i], self.width, 1, dtype=torch.cfloat))
+                    self.s[l].append(MLP_complex(self.width_list[i], self.width, self.width_list[i]))
 
         self.q = MLP(self.width*(1+self.depth), self.out_c, self.width * 4) # output channel is 1: u(x, y)
 

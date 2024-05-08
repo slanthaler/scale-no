@@ -1,10 +1,14 @@
 import torch
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+matplotlib.use('TkAgg')
 from symmetry_no.data_augmentation import RandomCropResize
 from symmetry_no.darcy_utilities import DarcyExtractBC
 from symmetry_no.helmholtz_utilities import HelmholtzExtractBC
 
 
-def LossSelfconsistency(model,x,loss_fn,y=None,re=None,):
+def LossSelfconsistency(model,x,loss_fn,y=None,re=None,plot=False):
     """
     Selfconsistency loss: 
 
@@ -56,5 +60,37 @@ def LossSelfconsistency(model,x,loss_fn,y=None,re=None,):
         #
         y_small_ = model(x_small, re)
         # return loss_fn(y_small_.view(batch_size,-1).detach(), y_small.view(batch_size,-1))
+
+
+        # ### PLOT
+        if plot:
+            x_l = x[0,0].squeeze().detach().cpu().numpy()
+            x_s = x_small[0,0].squeeze().detach().cpu().numpy()
+            g_l = x[0,1].squeeze().detach().cpu().numpy()
+            g_s = x_small[0, 1].squeeze().detach().cpu().numpy()
+            y_l = y[0].squeeze().detach().cpu().numpy()
+            y_s = y_small_[0].squeeze().detach().cpu().numpy()
+
+            fig, axs = plt.subplots(2, 3)  # Creates a grid of 2x2 for the images
+
+            # Plot each image in its respective subplot
+            im = axs[0, 0].imshow(x_l, cmap='viridis')
+            fig.colorbar(im, ax=axs[0, 0], orientation='vertical')
+            im = axs[0, 1].imshow(g_l, cmap='viridis')
+            fig.colorbar(im, ax=axs[0, 1], orientation='vertical')
+            im = axs[0, 2].imshow(y_l, cmap='viridis')
+            fig.colorbar(im, ax=axs[0, 2], orientation='vertical')
+
+            im = axs[1, 0].imshow(x_s, cmap='viridis')
+            fig.colorbar(im, ax=axs[1, 0], orientation='vertical')
+            im = axs[1, 1].imshow(g_s, cmap='viridis')
+            fig.colorbar(im, ax=axs[1, 1], orientation='vertical')
+            im = axs[1, 2].imshow(y_s, cmap='viridis')
+            fig.colorbar(im, ax=axs[1, 2], orientation='vertical')
+
+            # fig.show()
+            plt.savefig(f'darcy_sc.png')
+            print("finish plotting")
+
         return loss_fn(y_small.view(batch_size, -1), y_small_.view(batch_size, -1).detach())
 

@@ -56,7 +56,7 @@ test_re: [5,10,25,50,100]
 selfcon_data:
 selfcon_re:
 #
-augmentation_loss: True
+augmentation_loss: 1
 augmentation_samples: 4
 use_augmentation:
 sample_virtual_instance: False

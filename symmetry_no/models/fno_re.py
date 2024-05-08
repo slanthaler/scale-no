@@ -19,7 +19,7 @@ np.random.seed(0)
 # fourier layer
 ################################################################
 class SpectralConv2d(nn.Module):
-    def __init__(self, in_channels, out_channels, hidden_channels, modes1, modes2):
+    def __init__(self, in_channels, out_channels, hidden_channels, modes1, modes2, sub=0, mlp=False):
         super(SpectralConv2d, self).__init__()
 
         """
@@ -31,6 +31,8 @@ class SpectralConv2d(nn.Module):
         self.out_channels = out_channels
         self.modes1 = modes1
         self.modes2 = modes2
+        self.sub = sub
+        self.mlp = mlp
         self.p = MLP_complex(2*self.n_feature + self.n_feature, in_channels, in_channels)  # k_mat + Re
 
         self.norm1 = nn.GroupNorm(1, in_channels)
@@ -38,16 +40,16 @@ class SpectralConv2d(nn.Module):
 
         # in_channels = in_channels + 2*self.n_feature + self.n_feature
         self.scale = (1 / (in_channels * out_channels))
-        # if self.modes1 == 0:
-        # self.weights1 = nn.Parameter(self.scale * torch.rand(in_channels, hidden_channels, dtype=torch.cfloat))
-        # self.bias1 = nn.Parameter(self.scale * torch.rand(1,hidden_channels,1,1, dtype=torch.cfloat))
-        # self.weights2 = nn.Parameter(self.scale * torch.rand(hidden_channels, out_channels, dtype=torch.cfloat))
-        # self.bias2 = nn.Parameter(self.scale * torch.rand(1,out_channels,1,1, dtype=torch.cfloat))
-        # else:
-        self.weights3 = nn.Parameter(
-            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
-        self.weights4 = nn.Parameter(
-            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
+        if self.mlp:
+            self.weights1 = nn.Parameter(self.scale * torch.rand(in_channels, hidden_channels, dtype=torch.cfloat))
+            self.bias1 = nn.Parameter(self.scale * torch.rand(1,hidden_channels,1,1, dtype=torch.cfloat))
+            self.weights2 = nn.Parameter(self.scale * torch.rand(hidden_channels, out_channels, dtype=torch.cfloat))
+            self.bias2 = nn.Parameter(self.scale * torch.rand(1,out_channels,1,1, dtype=torch.cfloat))
+        else:
+            self.weights3 = nn.Parameter(
+                self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
+            self.weights4 = nn.Parameter(
+                self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
 
     # Complex multiplication
     def compl_mul2d(self, input, weights):
@@ -76,48 +78,57 @@ class SpectralConv2d(nn.Module):
         k_mat.requires_grad = False
         return k_mat
 
-    def embed_re(self, S2, re):
+    def embed_re(self, re, S1, S2):
         pow = torch.arange(start=1, end=self.n_feature+1, device=device).reshape(1, self.n_feature, 1, 1) /self.n_feature
-        re_mat = torch.pow(re, pow)[..., :S2//2 + 1]
+        re_mat = torch.pow(re, pow).repeat(1,1, S1, S2 // 2 +1)
         return re_mat
 
     def forward(self, x, Re):
         x = self.norm1(x)
 
+        batchsize, C, Nx, Ny = x.shape
+        # Compute Fourier coeffcients up to factor of e^(- something constant)
+
+        if self.sub > 0:
+            x = torch.cat([x, -x.flip(dims=[-2])[..., 1:Nx-1:self.sub, :]], dim=-2)
+            x = torch.cat([x, -x.flip(dims=[-1])[..., :, 1:Ny-1:self.sub]], dim=-1)
+        S1, S2 = x.shape[-2], x.shape[-1]
+
         #Compute Fourier coeffcients up to factor of e^(- something constant)
-        x_ft = torch.fft.rfft2(x, norm='forward')
-        # x_ft = x_ft * 100
+        x_ft = torch.fft.rfft2(x, norm="backward")
 
         # add wavenumber k_mat
-        k_mat = self.get_k(x.shape[0], x.shape[-2], x.shape[-1], device=x.device)
-        re_mat = self.embed_re(x.shape[-1], Re)
+        k_mat = self.get_k(batchsize, S1, S2, device=x.device)
+        re_mat = self.embed_re(Re, S1, S2)
         feature = self.p(torch.cat([k_mat, re_mat], dim=1))
         # x_ft = torch.cat([x_ft, k_mat, re_mat], dim=1)
         x_ft = x_ft * feature
 
-        # if self.modes1 == 0:
+        if self.mlp:
             # MLP layer
-        # out_ft = self.compl_mul2d(x_ft, self.weights1)
-        # out_ft = out_ft + self.bias1
-        #
-        # out_ft = F.gelu(out_ft.real) + 1j * F.gelu(out_ft.imag)
-        # # out_ft = torch.tanh(out_ft.abs()) * (out_ft / (out_ft.abs() + self.eps))
-        #
-        # out_ft = self.compl_mul2d(out_ft, self.weights2)
-        # out_ft1 = out_ft + self.bias2
+            out_ft = self.compl_mul2d(x_ft, self.weights1)
+            out_ft = out_ft + self.bias1
 
-        # else:
+            out_ft = F.gelu(out_ft.real) + 1j * F.gelu(out_ft.imag)
+            # out_ft = torch.tanh(out_ft.abs()) * (out_ft / (out_ft.abs() + self.eps))
+
+            out_ft = self.compl_mul2d(out_ft, self.weights2)
+            out_ft = out_ft + self.bias2
+
+        else:
             # contraction layer
-        m1 = np.minimum(self.modes1, x.size(-2)//2)
-        m2 = np.minimum(self.modes2, x.size(-1)//2)
-        out_ft2 = torch.zeros(x.size(0), self.out_channels, x.size(-2), x.size(-1) // 2 + 1, dtype=torch.cfloat,
-                             device=x.device)
-        out_ft2[:, :, :m1, :m2] = self.compl_mul2d(x_ft[:, :, :m1, :m2], self.weights3[..., :m1, :m2])
-        out_ft2[:, :, -m1:, :m2] = self.compl_mul2d(x_ft[:, :, -m1:, :m2], self.weights4[..., -m1:, :m2])
+            m1 = np.minimum(self.modes1, S1//2)
+            m2 = np.minimum(self.modes2, S2//2)
+            out_ft = torch.zeros(batchsize, self.out_channels, S1, S2 // 2 + 1, dtype=torch.cfloat,
+                                 device=x.device)
+            out_ft[:, :, :m1, :m2] = self.compl_mul2d(x_ft[:, :, :m1, :m2], self.weights3[..., :m1, :m2])
+            out_ft[:, :, -m1:, :m2] = self.compl_mul2d(x_ft[:, :, -m1:, :m2], self.weights4[..., -m1:, :m2])
 
-        # out_ft = out_ft1 + out_ft2
         #Return to physical space
-        x = torch.fft.irfft2(out_ft2, s=(x.size(-2), x.size(-1)), norm='forward')
+        x = torch.fft.irfft2(out_ft, s=(S1, S2), norm="backward")
+
+        if self.sub > 0:
+            x = x[:,:,:Nx,:Ny]
 
         x = self.norm2(x)
         return x
@@ -153,7 +164,7 @@ class MLP_complex(nn.Module):
         return x
 
 class FNO_mlp(nn.Module):
-    def __init__(self, width, modes1=0, modes2=0, depth=4, in_channel=7, out_channel=1):
+    def __init__(self, width, modes1=0, modes2=0, depth=4, in_channel=7, out_channel=1, sub=0, norm=False, mlp=False):
         super(FNO_mlp, self).__init__()
 
         """
@@ -174,6 +185,8 @@ class FNO_mlp(nn.Module):
         self.in_channel = in_channel
         self.out_channel = out_channel
         self.n_feature = self.width // 4
+        self.sub = sub
+        self.norm = norm
         self.pow = torch.arange(start=0, end=self.n_feature).reshape(1, self.n_feature, 1, 1) / (self.n_feature - 1)
 
         #self.p = nn.Linear(self.in_channel, self.width) # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
@@ -185,10 +198,10 @@ class FNO_mlp(nn.Module):
         self.mlp = []
         self.w = []
         for _ in range(depth):
-            self.conv.append(SpectralConv2d(self.width, self.width, self.width, modes1, modes2))
+            self.conv.append(SpectralConv2d(self.width, self.width, self.width, modes1, modes2, sub=sub, mlp=mlp))
             self.mlp.append(MLP(self.width, self.width, self.width))
-            # self.w.append(nn.Conv2d(self.width, self.width, 1))
-            self.w.append(nn.Conv2d(self.width, self.width, 3, padding="same"))
+            self.w.append(nn.Conv2d(self.width, self.width, 1))
+            # self.w.append(nn.Conv2d(self.width, self.width, 3, padding="same"))
         #
         self.conv = nn.ModuleList(self.conv)
         self.mlp = nn.ModuleList(self.mlp)
@@ -202,15 +215,16 @@ class FNO_mlp(nn.Module):
         if re==None:
             re = torch.ones(x.shape[0], device=x.device)
 
-        std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
-        # x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
+        if self.norm:
+            std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
+            x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
         # std = torch.std(x.clone(), dim=[1, 2, 3], keepdim=True)
         # x = x / std
 
         re = re.reshape(-1, 1, 1, 1)
         grid, grid_re = self.get_grid(x.shape, re, x.device)
-        re = re * torch.ones((x.shape[0], 1, x.shape[2], x.shape[3]), requires_grad=False, device=x.device)
-        x = torch.cat((x, grid, re), dim=1) # 1 is the channel dimension
+        re_cat = re * torch.ones((x.shape[0], 1, x.shape[2], x.shape[3]), requires_grad=False, device=x.device)
+        x = torch.cat((x, grid, re_cat), dim=1) # 1 is the channel dimension
         x = self.p(x)
         p = self.p_re(grid_re)
         x = x + p
@@ -223,8 +237,10 @@ class FNO_mlp(nn.Module):
             x = F.gelu(x)
 
         x = self.q(x)
-        x = x*std
-        del std
+
+        if self.norm:
+            x = x*std
+            del std
 
         return x
 
