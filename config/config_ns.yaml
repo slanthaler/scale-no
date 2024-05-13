@@ -7,14 +7,14 @@ dataset: 'NS'
 # fno2d
 modes: 32
 width: 32
-depth: 4
+depth: 2
 mlp: False
 
 # training
 learning_rate: 1e-3
 weight_decay: 1e-4
 
-batch_size: 10
+batch_size: 20
 epochs: 101
 
 n_train: 20
@@ -24,7 +24,7 @@ epochs_selfcon: 10 # now epochs_selfcon is the epoch to start self-consistency l
 epoch_test: 5
 
 truncate: 2 # truncate to sub-domain
-S: 128
+S: 64
 T: 300
 sub_s: 1
 sub_t: 1
@@ -35,15 +35,15 @@ sub_t: 1
 data_dir: '/media/wumming/HHD/HHD_data/KF'
 
 
-train_data: 'KF_f0_Re1000_N25_T500_S256_part0.pt'
+train_data: 'KF_f0_Re1000_N25_T300_S128_part0.pt'
 train_re: 1000
 test_data: [
-  'KF_f0_Re250_N25_T500_S256_part0.pt',
-  'KF_f0_Re500_N25_T500_S256_part0.pt',
-  'KF_f0_Re1000_N25_T500_S256_part0.pt',
-  'KF_f0_Re2000_N25_T500_S256_part0.pt',
-  'KF_f0_Re4000_N25_T500_S256_part0.pt',
-  'KF_f0_Re10000_N10_T300_S1024_dt_adpt_dx_2048_part0.pt',
+  'KF_f0_Re250_N25_T300_S32_part0.pt',
+  'KF_f0_Re500_N25_T300_S64_part0.pt',
+  'KF_f0_Re1000_N25_T300_S128_part0.pt',
+  'KF_f0_Re2000_N25_T300_S256_part0.pt',
+  'KF_f0_Re4000_N10_T300_S512_part0.pt',
+  'KF_f0_Re10000_N10_T300_S1024_part0.pt',
 ]
 test_re: [
   250,
@@ -56,7 +56,7 @@ test_re: [
 selfcon_data:
 
 #
-augmentation_loss: True
+augmentation_loss: False
 augmentation_samples: 5
 use_augmentation:
-sample_virtual_instance: True
+sample_virtual_instance: False

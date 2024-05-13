@@ -44,7 +44,7 @@ def LossSelfconsistency(model,x,loss_fn,y=None,re=None,plot=False):
         x_small = ExtractBD(x_small, y_small)
         #
         y_small_ = model(x_small, re)
-        return loss_fn(y_small_.view(batch_size, -1), y_small.view(batch_size, -1))
+        return loss_fn(y_small_, y_small)
 
     # If y is not given, we set y=model(x). We treat the subdomain as ground truth can detach y_small_
     else:
@@ -92,5 +92,5 @@ def LossSelfconsistency(model,x,loss_fn,y=None,re=None,plot=False):
             plt.savefig(f'darcy_sc.png')
             print("finish plotting")
 
-        return loss_fn(y_small.view(batch_size, -1), y_small_.view(batch_size, -1).detach())
+        return loss_fn(y_small, y_small_.detach())
 

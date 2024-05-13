@@ -176,7 +176,7 @@ class RangeNormalizer(object):
 
 #loss function with rel/abs Lp loss
 class LpLoss(object):
-    def __init__(self, d=2, p=2, size_average=True, reduction=True):
+    def __init__(self, d=2, p=2, size_average=True, reduction=True, truncate=4):
         super(LpLoss, self).__init__()
 
         #Dimension and Lp-norm type are postive
@@ -186,8 +186,10 @@ class LpLoss(object):
         self.p = p
         self.reduction = reduction
         self.size_average = size_average
+        self.truncate = truncate
 
     def abs(self, x, y):
+        x, y = x.squeeze(), y.squeeze()
         num_examples = x.size()[0]
 
         #Assume uniform mesh
@@ -204,6 +206,7 @@ class LpLoss(object):
         return all_norms
 
     def rel(self, x, y):
+        x, y = x.squeeze(), y.squeeze()
         num_examples = x.size()[0]
 
         diff_norms = torch.norm(x.reshape(num_examples,-1) - y.reshape(num_examples,-1), self.p, 1)
@@ -217,8 +220,40 @@ class LpLoss(object):
 
         return diff_norms/y_norms
 
+    def truncated(self, x, y):
+        x, y = x.squeeze(), y.squeeze()
+        num_examples, W, H = x.size()[0], x.size()[1], x.size()[2]
+        x = x[:, W//self.truncate:-W//self.truncate, H//self.truncate:-H//self.truncate]
+        y = y[:, W//self.truncate:-W//self.truncate, H//self.truncate:-H//self.truncate]
+
+        diff_norms = torch.norm(x.reshape(num_examples,-1) - y.reshape(num_examples,-1), self.p, 1)
+        y_norms = torch.norm(y.reshape(num_examples,-1), self.p, 1)
+
+        if self.reduction:
+            if self.size_average:
+                return torch.mean(diff_norms/y_norms)
+            else:
+                return torch.sum(diff_norms/y_norms)
+
+        return diff_norms/y_norms
+
+    def i_rel(self, x, y, identity):
+        num_examples = x.size()[0]
+
+        diff_norms = torch.norm(x.reshape(num_examples,-1) - y.reshape(num_examples,-1), self.p, 1)
+        identity_diff_norms = torch.norm(identity.reshape(num_examples,-1) - y.reshape(num_examples,-1), self.p, 1)
+
+        if self.reduction:
+            if self.size_average:
+                return torch.mean(diff_norms/identity_diff_norms)
+            else:
+                return torch.sum(diff_norms/identity_diff_norms)
+
+        return diff_norms/identity_diff_norms
+
     def __call__(self, x, y):
         return self.rel(x, y)
+        # return self.truncated(x, y)
 
 # Sobolev norm (HS norm)
 # where we also compare the numerical derivatives between the output and target

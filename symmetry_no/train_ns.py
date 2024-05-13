@@ -11,6 +11,8 @@ from symmetry_no.models.fno2d import *
 from symmetry_no.models.fno2d_doubled import *
 from symmetry_no.models.fno_u import *
 from symmetry_no.models.fno_re import *
+from symmetry_no.models.CNO import CNO
+from symmetry_no.models.unet import UNet2d
 from symmetry_no.selfconsistency import LossSelfconsistency
 from symmetry_no.gaussian_random_field import sample_NS
 
@@ -64,9 +66,11 @@ def main(config):
         modes_list.append(modes//n)
         width_list.append(n*width)
 
+    # model = UNet2d(in_dim=5, out_dim=1).to(device)
+    # model = CNO(in_dim=5, out_dim=1, in_size=64, N_layers=3).to(device)
     # model = FNO2d(modes1, modes2, width, depth).to(device)
     # model = FNO2d_doubled(modes1, modes2, width, depth).to(device)
-    model = FNO_U(modes_list, modes_list, width_list, depth=3, mlp=mlp, in_channel=7, out_channel=1).to(device)
+    model = FNO_U(modes_list, modes_list, width_list, depth=depth, layer=3, mlp=mlp, in_channel=7, out_channel=1).to(device)
     # model = FNO_mlp(width, modes1, modes2, depth, mlp=mlp, in_channel=7, out_channel=1).to(device)
     print('FNO2d parameter count: ', count_params(model))
 
@@ -102,13 +106,14 @@ def main(config):
         for d in data.train_loader:
             x, y, re = d['train']
             x, y, re = x.to(device), y.to(device), re.to(device)
+            y = y - x[:,0]
 
             # supervised training
             optimizer.zero_grad()
             out = model(x, re)
             # DO WE NEED TO NORMALIZE THE OUTPUT??
 
-            loss = loss_fn(out.view(batch_size, -1), y.view(batch_size, -1))
+            loss = loss_fn(out, y)
             train_l2 += loss.item()
 
             # augmentation via sub-sampling
@@ -139,8 +144,9 @@ def main(config):
                         x, y, re = x.to(device), y.to(device), re.to(device)
 
                         out = model(x, re)
+                        out = out + x[:, 0:1]
                         # DO WE NEED TO NORMALIZE THE OUTPUT??
-                        test_l2[i] += loss_fn(out.view(batch_size, -1), y.view(batch_size, -1)).item()
+                        test_l2[i] += loss_fn.truncated(out, y).item()
 
         # normalize losses
         train_l2 /= n_train

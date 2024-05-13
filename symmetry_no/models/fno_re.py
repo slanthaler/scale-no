@@ -200,8 +200,8 @@ class FNO_mlp(nn.Module):
         for _ in range(depth):
             self.conv.append(SpectralConv2d(self.width, self.width, self.width, modes1, modes2, sub=sub, mlp=mlp))
             self.mlp.append(MLP(self.width, self.width, self.width))
-            self.w.append(nn.Conv2d(self.width, self.width, 1))
-            # self.w.append(nn.Conv2d(self.width, self.width, 3, padding="same"))
+            # self.w.append(nn.Conv2d(self.width, self.width, 1))
+            self.w.append(nn.Conv2d(self.width, self.width, 3, padding="same"))
         #
         self.conv = nn.ModuleList(self.conv)
         self.mlp = nn.ModuleList(self.mlp)
@@ -227,7 +227,7 @@ class FNO_mlp(nn.Module):
         x = torch.cat((x, grid, re_cat), dim=1) # 1 is the channel dimension
         x = self.p(x)
         p = self.p_re(grid_re)
-        x = x + p
+        x = x #+ p
 
         for i in range(self.depth):
             x1 = self.conv[i](x, re)

@@ -112,6 +112,7 @@ class FNO2d(nn.Module):
         self.q = MLP(self.width, self.out_channel, self.width * 4) # output channel is 1: u(x, y)
 
     def forward(self, x, re=None):
+        x = x[:,0:1].repeat(1,5,1,1)
 
         std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
         x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
