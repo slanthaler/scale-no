@@ -1,10 +1,20 @@
 import torch
 import numpy as np
 
-data = torch.load('/media/wumming/HHD/HHD_data/KF/KF_f0_Re250_N25_T500_S256_part0.pt')
-# data = torch.load('/media/wumming/HHD/HHD_data/KF/KF_f0_Re4000_N10_T300_S1024_dt_adpt_dx_2048_part0.pt')
+Re = 10000
+sub = 1
+
+Path = '/media/wumming/HHD/HHD_data/KF/'
+# Path = '/central/groups/tensorlab/zongyi/KF/'
+
+# data = torch.load(Path+'KF_f0_Re'+str(Re)+'_N25_T500_S256_part0.pt')
+data = torch.load(Path+'KF_f0_Re'+str(Re)+'_N10_T300_S1024_part0.pt')
 print(data.shape)
-sub = 4
-data = data[:,:301,::sub, ::sub]
-torch.save(data, '/media/wumming/HHD/HHD_data/KF/KF_f0_Re250_N25_T300_S64_part0.pt')
-# data = torch.load('/media/wumming/HHD/HHD_data/KF/KF_f0_Re4000_N10_T300_S1024_dt_adpt_dx_2048_part0.pt')
+
+S = data.shape[-1] // sub
+new_data = data[-5:,:301,::sub, ::sub].clone()
+
+print(S, new_data.shape)
+torch.save(new_data, Path+'KF_f0_Re'+str(Re)+'_N5_T300_S'+str(S)+'_test.pt')
+
+

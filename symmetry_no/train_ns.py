@@ -58,7 +58,7 @@ def main(config):
 
     ### U-shape FNO
     S = config.S
-    modes = S//2
+    modes = modes1
     modes_list = []
     width_list = []
     for i in range(depth):
@@ -66,14 +66,22 @@ def main(config):
         modes_list.append(modes//n)
         width_list.append(n*width)
 
-    # model = UNet2d(in_dim=5, out_dim=1).to(device)
-    # model = CNO(in_dim=5, out_dim=1, in_size=64, N_layers=3).to(device)
-    # model = FNO2d(modes1, modes2, width, depth).to(device)
-    # model = FNO2d_doubled(modes1, modes2, width, depth).to(device)
-    model = FNO_U(modes_list, modes_list, width_list, depth=depth, layer=3, mlp=mlp, in_channel=7, out_channel=1).to(device)
-    # model = FNO_mlp(width, modes1, modes2, depth, mlp=mlp, in_channel=7, out_channel=1).to(device)
-    print('FNO2d parameter count: ', count_params(model))
+    if config.model == "Unet" or config.model == "UNet":
+        model = UNet2d(in_dim=5, out_dim=1, latent_size=S).to(device)
+    elif config.model == "CNO":
+        model = CNO(in_dim=5, out_dim=1, in_size=64, N_layers=3).to(device)
+    elif config.model == "FNO":
+        model = FNO2d(modes1, modes2, width, depth).to(device)
+    elif config.model == "FNO_d":
+        model = FNO2d_doubled(modes1, modes2, width, depth).to(device)
+    elif config.model == "FNO_u":
+        model = FNO_U(modes_list, modes_list, width_list, depth=depth, layer=3, mlp=mlp, in_channel=7, out_channel=1).to(device)
+    elif config.model == "FNO_re":
+        model = FNO_mlp(width, modes1, modes2, depth, mlp=mlp, in_channel=7, out_channel=1).to(device)
+    else:
+        raise NotImplementedError("model not implement")
 
+    print('FNO2d parameter count: ', count_params(model))
     #
     batch_size = config.batch_size
     epochs = config.epochs
@@ -106,7 +114,7 @@ def main(config):
         for d in data.train_loader:
             x, y, re = d['train']
             x, y, re = x.to(device), y.to(device), re.to(device)
-            y = y - x[:,0]
+            y = y - x[:,0] # learn the residual
 
             # supervised training
             optimizer.zero_grad()
@@ -123,8 +131,8 @@ def main(config):
                 train_aug += loss_aug.item()
 
             if sample_virtual_instance and (epoch >= start_selfcon):
-                rate = torch.rand(1)*5*(epoch/epochs) + 1
-                new_x, rate = sample_NS(input=x, rate=rate, keepsize=True)
+                rate = torch.rand(1)*4*(epoch/epochs) + 1
+                new_x, rate = sample_NS(input=x, rate=rate, keepsize=False)
                 new_re = re * rate
                 loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re)
                 loss += 0.5 * loss_sc * (epoch/epochs)
@@ -147,6 +155,7 @@ def main(config):
                         out = out + x[:, 0:1]
                         # DO WE NEED TO NORMALIZE THE OUTPUT??
                         test_l2[i] += loss_fn.truncated(out, y).item()
+                        # test_l2[i] += loss_fn.rel_i(out, y, x[:, 0:1]).item()
 
         # normalize losses
         train_l2 /= n_train
@@ -177,7 +186,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='ns',
+                        default='ns_fno',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,

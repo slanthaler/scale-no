@@ -156,24 +156,24 @@ class R_transformations(nn.Module):
     def forward(self, x, K_features, skip_in=None):
         # adaptive modes
         M1, M2 = x.shape[2]//2, x.shape[3]
-        modes1_list = []
-        modes2_list = []
-        for l in range(self.depth):
-            n = 2 ** l
-            m1l, m2l = M1//n, M2//n
+        modes1_list = self.modes1_list
+        modes2_list = self.modes2_list
 
-            # in tensor implementation, if input is larger than weight, set the mode_list with the weight
-            if not self.mlp and m1l > self.modes1_list[l]:
-                m1l = self.modes1_list[l]
-                m2l = self.modes2_list[l]
-
-            modes1_list.append(m1l)
-            modes2_list.append(m2l)
+        # first level is mlp
+        modes1_list[0] = M1
+        modes2_list[0] = M2
+        # in tensor implementation, if input is larger than weight, set the mode_list with the weight
+        if not self.mlp:
+            for l in range(0, self.depth):
+                if M1 < self.modes1_list[l]:
+                    modes1_list[l] = M1
+                if M2 < self.modes1_list[l]:
+                    modes2_list[l] = M2
 
         # if the x is larger than weight, truncate x
-        if x.shape[-2] > modes1_list[0]*2 or x.shape[-1] > modes2_list[0]+1:
-            x = torch.cat((x[:, :, :modes1_list[0], :modes2_list[0]], x[:, :, -modes1_list[0]:, :modes2_list[0]]), dim=-2)  # (width, mode/2)
-            K_features = torch.cat((K_features[:, :, :modes1_list[0], :modes2_list[0]], K_features[:, :, -modes1_list[0]:, :modes2_list[0]]), dim=-2)
+        # if x.shape[-2] > modes1_list[0]*2 or x.shape[-1] > modes2_list[0]+1:
+        #     x = torch.cat((x[:, :, :modes1_list[0], :modes2_list[0]], x[:, :, -modes1_list[0]:, :modes2_list[0]]), dim=-2)  # (width, mode/2)
+        #     K_features = torch.cat((K_features[:, :, :modes1_list[0], :modes2_list[0]], K_features[:, :, -modes1_list[0]:, :modes2_list[0]]), dim=-2)
 
         if skip_in == None:
             skip_in = self.init_skip_in(x, modes1_list, modes2_list)
@@ -216,18 +216,37 @@ class MLP(nn.Module):
         return x
 
 class Local(nn.Module):
-    def __init__(self, in_channels, out_channels, mid_channels, kernel_size=3, dtype=torch.float):
+    def __init__(self, in_channels, out_channels, mid_channels, kernel_size=3, in_shape=64, dtype=torch.float):
         super(Local, self).__init__()
-        self.mlp1 = EquidistantDiscreteContinuousConv2d(in_channels, mid_channels, kernel_shape=3, in_shape=[128,128], out_shape=[128,128])
-        self.mlp2 = EquidistantDiscreteContinuousConv2d(mid_channels, out_channels, kernel_shape=3, in_shape=[128,128], out_shape=[128,128])
+        # self.mlp1 = EquidistantDiscreteContinuousConv2d(in_channels, mid_channels, kernel_shape=3, in_shape=[in_shape,in_shape])
+        # self.mlp2 = EquidistantDiscreteContinuousConv2d(mid_channels, out_channels, kernel_shape=3, in_shape=[in_shape,in_shape])
+        self.mlp1 = nn.Conv2d(in_channels, mid_channels, kernel_size, padding="same", dtype=dtype)
+        self.mlp2 = nn.Conv2d(mid_channels, out_channels, kernel_size, padding="same", dtype=dtype)
+        self.size = in_shape
         # self.norm = nn.GroupNorm(1, mid_channels)
 
     def forward(self, x):
+        input_size = [x.shape[-2], x.shape[-1]]
+        if input_size[1] != self.size:
+            x = F.interpolate(x, size=self.size)
+
         x = self.mlp1(x)
-        if torch.is_complex(x):
-            x = F.gelu(x.real) + 1j * F.gelu(x.imag)
-        else:
-            x = F.gelu(x)
+        x = F.gelu(x)
+        x = self.mlp2(x)
+
+        if input_size != self.size:
+            x = F.interpolate(x, size=input_size)
+        return x
+
+class Local_disco(nn.Module):
+    def __init__(self, in_channels, out_channels, mid_channels, kernel_size=3, in_shape=64, dtype=torch.float):
+        super(Local, self).__init__()
+        self.mlp1 = EquidistantDiscreteContinuousConv2d(in_channels, mid_channels, kernel_shape=3, in_shape=[in_shape,in_shape])
+        self.mlp2 = EquidistantDiscreteContinuousConv2d(mid_channels, out_channels, kernel_shape=3, in_shape=[in_shape,in_shape])
+
+    def forward(self, x):
+        x = self.mlp1(x)
+        x = F.gelu(x)
         x = self.mlp2(x)
         return x
 
@@ -258,10 +277,9 @@ class FNO_U(nn.Module):
         self.pad = 8 # 1/1, 1/2, 1/4, 1/8
         self.n_feature = n_feature
         self.size = 128
-        # self.adain = AdaIN()
+        self.norm = nn.GroupNorm(1, self.width)
 
         self.p = MLP(self.in_c, self.width, 2*self.width) # input channel is 3: (a(x, y), x, y)
-        # self.p = Local(self.in_c, self.width, 2*self.width) # input channel is 3: (a(x, y), x, y)
         self.k_mlp = MLP(4*self.n_feature, 4*self.n_feature, 2*self.width, dtype=torch.cfloat)
 
 
@@ -273,17 +291,17 @@ class FNO_U(nn.Module):
 
         for l in range(self.layer):
             self.R.append(R_transformations(self.width_list, self.modes1_list, self.modes2_list, depth, mlp, self.n_feature))
-            self.mlp.append(MLP(self.width, self.width, self.width))
-            # self.mlp.append(Local(self.width, self.width, self.width))
+            # self.mlp.append(MLP(self.width, self.width, self.width))
+            self.mlp.append(Local(self.width, self.width, self.width, in_shape=self.modes1_list[0]*2))
             self.w.append(nn.Conv2d(self.width, self.width, 1))
             self.s.append(nn.ModuleList([]))
             for i in range(self.depth):
                 if l < self.layer - 1:
-                    self.s[l].append(MLP(self.width_list[i], self.width_list[i], self.width_list[i]))
-                    # self.s[l].append(Local(self.width_list[i], self.width_list[i], self.width_list[i]))
+                    # self.s[l].append(MLP(self.width_list[i], self.width_list[i], self.width_list[i]))
+                    self.s[l].append(Local(self.width_list[i], self.width_list[i], self.width_list[i], in_shape=self.modes1_list[i]*2))
                 elif l == self.layer - 1:
-                    # self.s[l].append(nn.Conv2d(self.width_list[i], self.width, 1, dtype=torch.cfloat))
-                    self.s[l].append(MLP(self.width_list[i], self.width, self.width_list[i]//2))
+                    self.s[l].append(MLP(self.width_list[i], self.width, self.width_list[i]//2, dtype=torch.cfloat))
+                    # self.s[l].append(Local(self.width_list[i], self.width, self.width_list[i]//2, in_shape=self.modes1_list[i]*2))
 
         self.q = MLP(self.width*(1+self.depth), self.out_c, self.width * 4) # output channel is 1: u(x, y)
         # self.q = Local(self.width*(1+self.depth), self.out_c, self.width * 4) # output channel is 1: u(x, y)
@@ -330,9 +348,9 @@ class FNO_U(nn.Module):
     def skip_end(self, out, skip, S1, S2):
         for i in range(self.depth):
             x = skip[i]
-            # x = self.s[-1][i](x)
-            x = self.ifft(x, S1, S2)
             x = self.s[-1][i](x)
+            x = self.ifft(x, S1, S2)
+            # x = self.s[-1][i](x)
             out = torch.cat([out, x], dim=1)
         return out
 
@@ -360,11 +378,12 @@ class FNO_U(nn.Module):
 
         for i in range(self.layer):
             x1 = self.w[i](x)
+            x2 = self.mlp[i](x)
             x = self.fft(x)
             x, skip = self.R[i](x, K_features, skip)
             x = self.ifft(x, S1, S2)
-            x = self.mlp[i](x)
-            x = x + x1
+            x = x + x1 + x2
+            x = self.norm(x)
             if i != self.layer-1:
                 skip = self.skip_block(skip, i)
                 x = F.gelu(x)

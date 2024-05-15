@@ -17,7 +17,7 @@ weight_decay: 1e-4
 batch_size: 10
 epochs: 101
 
-model: "FNO_u" # "UNet", "FNO", "FNO_re"
+model: "FNO_re" # "UNet", "FNO", "FNO_re"
 n_train: 60
 n_test: 5
 n_selfcon: 20
@@ -58,6 +58,6 @@ selfcon_data:
 
 #
 augmentation_loss: 1
-augmentation_samples: 5
+augmentation_samples: 0
 use_augmentation:
 sample_virtual_instance: 0

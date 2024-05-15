@@ -58,6 +58,6 @@ selfcon_data:
 
 #
 augmentation_loss: 1
-augmentation_samples: 5
+augmentation_samples: 1
 use_augmentation:
 sample_virtual_instance: 0

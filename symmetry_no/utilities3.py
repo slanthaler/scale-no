@@ -237,7 +237,7 @@ class LpLoss(object):
 
         return diff_norms/y_norms
 
-    def i_rel(self, x, y, identity):
+    def rel_i(self, x, y, identity):
         num_examples = x.size()[0]
 
         diff_norms = torch.norm(x.reshape(num_examples,-1) - y.reshape(num_examples,-1), self.p, 1)

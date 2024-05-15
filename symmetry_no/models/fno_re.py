@@ -19,14 +19,14 @@ np.random.seed(0)
 # fourier layer
 ################################################################
 class SpectralConv2d(nn.Module):
-    def __init__(self, in_channels, out_channels, hidden_channels, modes1, modes2, sub=0, mlp=False):
+    def __init__(self, in_channels, out_channels, hidden_channels, modes1, modes2, n_feature=5, sub=0, mlp=False):
         super(SpectralConv2d, self).__init__()
 
         """
         2D Fourier layer. It does FFT, linear transform, and Inverse FFT.    
         """
 
-        self.n_feature = 5
+        self.n_feature = n_feature
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.modes1 = modes1
@@ -184,24 +184,25 @@ class FNO_mlp(nn.Module):
         self.depth = depth
         self.in_channel = in_channel
         self.out_channel = out_channel
-        self.n_feature = self.width // 4
+        self.n_feature = 3
         self.sub = sub
         self.norm = norm
         self.pow = torch.arange(start=0, end=self.n_feature).reshape(1, self.n_feature, 1, 1) / (self.n_feature - 1)
 
         #self.p = nn.Linear(self.in_channel, self.width) # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
         # self.p = MLP(self.in_channel+1, self.width, self.width)
-        self.p = MLP(self.in_channel + 1, self.width, self.width)
-        self.p_re = MLP(self.width, self.width, self.width)
+        self.p = MLP(self.in_channel + 4*self.n_feature, self.width, self.width)
+        self.encode_re1 = nn.Linear(1, self.width)
+        self.encode_re2 = nn.Linear(self.width, 1)
 
         self.conv = []
         self.mlp = []
         self.w = []
         for _ in range(depth):
-            self.conv.append(SpectralConv2d(self.width, self.width, self.width, modes1, modes2, sub=sub, mlp=mlp))
+            self.conv.append(SpectralConv2d(self.width, self.width, self.width, modes1, modes2, n_feature=self.n_feature, sub=sub, mlp=mlp))
             self.mlp.append(MLP(self.width, self.width, self.width))
-            # self.w.append(nn.Conv2d(self.width, self.width, 1))
-            self.w.append(nn.Conv2d(self.width, self.width, 3, padding="same"))
+            self.w.append(nn.Conv2d(self.width, self.width, 1))
+            # self.w.append(nn.Conv2d(self.width, self.width, 3, padding="same"))
         #
         self.conv = nn.ModuleList(self.conv)
         self.mlp = nn.ModuleList(self.mlp)
@@ -212,8 +213,7 @@ class FNO_mlp(nn.Module):
     def forward(self, x, re=None):
         # x (batch, in_channels, X, Y)
         # re (batch, )
-        if re==None:
-            re = torch.ones(x.shape[0], device=x.device)
+        x = x[:, 0:1].repeat(1, 5, 1, 1)
 
         if self.norm:
             std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
@@ -221,13 +221,16 @@ class FNO_mlp(nn.Module):
         # std = torch.std(x.clone(), dim=[1, 2, 3], keepdim=True)
         # x = x / std
 
+        if re==None:
+            re = torch.ones(x.shape[0], 1, device=x.device)
+        # re = self.encode_re1(re)
+        # re = F.gelu(re)
+        # re = self.encode_re2(re)
+
         re = re.reshape(-1, 1, 1, 1)
         grid, grid_re = self.get_grid(x.shape, re, x.device)
-        re_cat = re * torch.ones((x.shape[0], 1, x.shape[2], x.shape[3]), requires_grad=False, device=x.device)
-        x = torch.cat((x, grid, re_cat), dim=1) # 1 is the channel dimension
+        x = torch.cat((x, grid, grid_re), dim=1) # 1 is the channel dimension
         x = self.p(x)
-        p = self.p_re(grid_re)
-        x = x #+ p
 
         for i in range(self.depth):
             x1 = self.conv[i](x, re)
