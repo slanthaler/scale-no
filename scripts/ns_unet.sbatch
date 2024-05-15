@@ -1,10 +1,11 @@
 #!/bin/bash
 
-#SBATCH --time=04:00:00
+#SBATCH --time=12:00:00
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --gres gpu:1
-##SBATCH --mem=64G
+#SBATCH --mem=64G
+#SBATCH --partition=gpu
 #SBATCH --job-name="symmetry-baseline"
 #SBATCH --output=slurm-%x.%j.out
 #SBATCH --error=slurm-%x.%j.out
@@ -14,9 +15,9 @@
 #SBATCH --mail-type=FAIL
 
 # initialize conda environment
-source /home/zongyili/.bashrc
+source /home/zongyili/.bashrc_2022
 conda activate cuda12
 
 # run code
-python3 /central/groups/astuart/zongyi/symmetry-no/symmetry_no/train.py -n alpha2_aug
+python3 /central/groups/astuart/zongyi/symmetry-no/symmetry_no/train_ns.py -n ns_unet
 

@@ -1,7 +1,7 @@
 ---
 #
 name: 'ns_b_aug_mlp'
-run_name: 'NS_boundary RE'
+run_name: 'NS RE FNO+U'
 
 dataset: 'NS'
 # fno2d
