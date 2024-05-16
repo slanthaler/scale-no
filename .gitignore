@@ -2,6 +2,7 @@
 \#*
 wandb/*
 model/*
+scripts/*
 symmetry_no/wandb/*
 symmetry-no/__pycache__
 symmetry-no/.h5
