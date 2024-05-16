@@ -90,7 +90,7 @@ class FNO2d(nn.Module):
         self.modes2 = modes2
         self.width = width
         self.depth = depth
-        self.in_channel = in_channel
+        self.in_channel = in_channel + 2
         self.out_channel = out_channel
         
         #self.p = nn.Linear(self.in_channel, self.width) # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
@@ -112,10 +112,10 @@ class FNO2d(nn.Module):
         self.q = MLP(self.width, self.out_channel, self.width * 4) # output channel is 1: u(x, y)
 
     def forward(self, x, re=None):
-        x = x[:,0:1].repeat(1,5,1,1)
+        # x = x[:,0:1].repeat(1,5,1,1)
 
-        std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
-        x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
+        # std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
+        # x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
 
         grid = self.get_grid(x.shape, x.device)
         x = torch.cat((x, grid), dim=1) # 1 is the channel dimension
@@ -129,8 +129,8 @@ class FNO2d(nn.Module):
             x = F.gelu(x)
 
         x = self.q(x)
-        x = x*std
-        del std
+        # x = x*std
+        # del std
 
         return x
     

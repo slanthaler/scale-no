@@ -266,7 +266,7 @@ class FNO_U(nn.Module):
         output: the solution
         output shape: (batchsize, x=s, y=s, c=1)
         """
-        self.in_c = in_channel
+        self.in_c = in_channel + 2
         self.out_c = out_channel
         self.modes1_list = modes1_list
         self.modes2_list = modes2_list
@@ -355,8 +355,6 @@ class FNO_U(nn.Module):
         return out
 
     def forward(self, x, re):
-
-        x = x[:,0:1].repeat(1,5,1,1)
 
         if re==None:
             re = torch.ones(x.shape[0], device=x.device)

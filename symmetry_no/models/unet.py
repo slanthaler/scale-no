@@ -81,7 +81,7 @@ class UNet2d(nn.Module):
         self.size = latent_size
 
     def forward(self, x, re=None):
-        x = x[:,0:1].repeat(1,5,1,1)
+        # x = x[:,0:1].repeat(1,5,1,1)
         input_size = x.shape[-1]
 
         if input_size != self.size:

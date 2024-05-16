@@ -2,13 +2,13 @@ import torch
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 from symmetry_no.data_augmentation import RandomCropResize
 from symmetry_no.darcy_utilities import DarcyExtractBC
 from symmetry_no.helmholtz_utilities import HelmholtzExtractBC
 
 
-def LossSelfconsistency(model,x,loss_fn,y=None,re=None,plot=False):
+def LossSelfconsistency(model,x,loss_fn,y=None,re=None,type="darcy",plot=False):
     """
     Selfconsistency loss: 
 
@@ -23,10 +23,12 @@ def LossSelfconsistency(model,x,loss_fn,y=None,re=None,plot=False):
     transform_xy = RandomCropResize(p=1.0)
     batch_size = x.shape[0]
 
-    if x.shape[1] == 5:
+    if type == "darcy":
         ExtractBD = DarcyExtractBC
-    elif x.shape[1] == 9:
+    elif type == "helmholtz":
         ExtractBD = HelmholtzExtractBC
+    elif type == "NS":
+        ExtractBD = lambda x, y : x # No boundary
     else:
         print("boundary type not supported")
 

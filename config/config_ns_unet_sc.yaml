@@ -1,7 +1,7 @@
 ---
 #
 name: 'ns_b_aug_mlp'
-run_name: 'NS RE FNO+U'
+run_name: 'NS RE Unet sc'
 
 dataset: 'NS'
 # fno2d
@@ -17,11 +17,11 @@ weight_decay: 1e-4
 batch_size: 10
 epochs: 101
 
-model: "FNO_u" # "UNet", "FNO", "FNO_re"
+model: "UNet" # "UNet", "FNO", "FNO_re"
 n_train: 50
 n_test: 5
 n_selfcon: 20
-epochs_selfcon: 10 # now epochs_selfcon is the epoch to start self-consistency loss
+epochs_selfcon: 1 # now epochs_selfcon is the epoch to start self-consistency loss
 epoch_test: 5
 
 truncate: 2 # truncate to sub-domain
@@ -34,8 +34,8 @@ sub_t: 1
 #grid_size: 128
 
 # datasets
-data_dir: '/media/wumming/HHD/HHD_data/KF'
-#data_dir: '/central/groups/tensorlab/zongyi/KF'
+#data_dir: '/media/wumming/HHD/HHD_data/KF'
+data_dir: '/central/groups/tensorlab/zongyi/KF'
 
 train_data: 'KF_f0_Re1000_N60_T300_S256_train.pt'
 train_re: 1000
@@ -61,4 +61,4 @@ selfcon_data:
 augmentation_loss: 1
 augmentation_samples: 1
 use_augmentation:
-sample_virtual_instance: 0
+sample_virtual_instance: 1

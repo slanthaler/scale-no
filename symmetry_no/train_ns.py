@@ -1,8 +1,8 @@
 import sys
 import wandb
 import argparse
-
-# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
+#
+sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
 
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
 from symmetry_no.config_helper import ReadConfig
@@ -14,7 +14,7 @@ from symmetry_no.models.fno_re import *
 from symmetry_no.models.CNO import CNO
 from symmetry_no.models.unet import UNet2d
 from symmetry_no.selfconsistency import LossSelfconsistency
-from symmetry_no.gaussian_random_field import sample_NS
+from symmetry_no.upscale import sample_NS
 
 def main(config):
     #
@@ -33,18 +33,21 @@ def main(config):
         data = DarcyData(config)
         n_train = config.n_train
         n_test = config.n_test
+        in_channel = 1
 
     elif config.dataset == 'helmholtz':
         print('Loading Helmholtz datasets...')
         data = HelmholtzData(config)
         n_train = config.n_train
         n_test = config.n_test
+        in_channel = 2
 
     elif config.dataset == 'NS':
         print('Loading NS datasets...')
         data = NSData(config)
         n_train = config.n_train * config.T
         n_test = config.n_test * config.T
+        in_channel = config.T_in
 
     else:
         print("config.dataset should be either 'darcy' or 'NS'.")
@@ -67,17 +70,17 @@ def main(config):
         width_list.append(n*width)
 
     if config.model == "Unet" or config.model == "UNet":
-        model = UNet2d(in_dim=5, out_dim=1, latent_size=S).to(device)
+        model = UNet2d(in_dim=in_channel, out_dim=1, latent_size=S).to(device)
     elif config.model == "CNO":
-        model = CNO(in_dim=5, out_dim=1, in_size=64, N_layers=3).to(device)
+        model = CNO(in_dim=in_channel, out_dim=1, in_size=64, N_layers=3).to(device)
     elif config.model == "FNO":
-        model = FNO2d(modes1, modes2, width, depth).to(device)
+        model = FNO2d(modes1, modes2, width, depth, in_channel=in_channel).to(device)
     elif config.model == "FNO_d":
-        model = FNO2d_doubled(modes1, modes2, width, depth).to(device)
+        model = FNO2d_doubled(modes1, modes2, width, depth, in_channel=in_channel).to(device)
     elif config.model == "FNO_u":
-        model = FNO_U(modes_list, modes_list, width_list, depth=depth, layer=3, mlp=mlp, in_channel=7, out_channel=1).to(device)
+        model = FNO_U(modes_list, modes_list, width_list, depth=depth, layer=3, mlp=mlp, in_channel=in_channel, out_channel=1).to(device)
     elif config.model == "FNO_re":
-        model = FNO_mlp(width, modes1, modes2, depth, mlp=mlp, in_channel=7, out_channel=1).to(device)
+        model = FNO_mlp(width, modes1, modes2, depth, mlp=mlp, in_channel=in_channel, out_channel=1).to(device)
     else:
         raise NotImplementedError("model not implement")
 
@@ -114,7 +117,7 @@ def main(config):
         for d in data.train_loader:
             x, y, re = d['train']
             x, y, re = x.to(device), y.to(device), re.to(device)
-            y = y - x[:,0] # learn the residual
+            # y = y - x[:,-1:] # learn the residual
 
             # supervised training
             optimizer.zero_grad()
@@ -132,9 +135,9 @@ def main(config):
 
             if sample_virtual_instance and (epoch >= start_selfcon):
                 rate = torch.rand(1)*4*(epoch/epochs) + 1
-                new_x, rate = sample_NS(input=x, rate=rate, keepsize=False)
+                new_x, rate = sample_NS(input=x, rate=rate, keepsize=True)
                 new_re = re * rate
-                loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re)
+                loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re, type=config.dataset)
                 loss += 0.5 * loss_sc * (epoch/epochs)
                 train_sc += loss_sc.item()
 
@@ -152,7 +155,7 @@ def main(config):
                         x, y, re = x.to(device), y.to(device), re.to(device)
 
                         out = model(x, re)
-                        out = out + x[:, 0:1]
+                        # out = out + x[:, -1:]
                         # DO WE NEED TO NORMALIZE THE OUTPUT??
                         test_l2[i] += loss_fn.truncated(out, y).item()
                         # test_l2[i] += loss_fn.rel_i(out, y, x[:, 0:1]).item()

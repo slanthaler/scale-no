@@ -86,11 +86,11 @@ def sample_Darcy(rate, input=None, alpha_a=0.5, alpha_g=1, sigma_g=1, keepsize=F
     rate = size/size_input
 
     sigma = 1/rate
-    a_GRF = GaussianRF(dim=2, size=size, alpha=alpha_a, sigma=sigma, exp=True)
+    a_GRF = GaussianRF(dim=2, size=size, alpha=alpha_a, sigma=sigma, exp=True, device=device)
     a = a_GRF.sample(N).real.to(device)
     a[a > 0] = 12
     a[a <= 0] = 2
-    g_GRF = GaussianRF(dim=2, size=size, alpha=alpha_g, sigma=sigma_g, exp=True)
+    g_GRF = GaussianRF(dim=2, size=size, alpha=alpha_g, sigma=sigma_g, exp=True, device=device)
     g = g_GRF.sample(N).real.to(device)
     g = g / torch.std(g) * torch.std(input[:, 1:])
 
@@ -108,10 +108,10 @@ def sample_helm(rate, input, alpha_a=1.5, alpha_g=3.5, tau=2, keepsize=False):
     rate = size/size_input
     repeat = math.ceil(size / size_input)
 
-    a_GRF = GaussianRF(dim=2, size=size, alpha=alpha_a, tau=tau)
+    a_GRF = GaussianRF(dim=2, size=size, alpha=alpha_a, tau=tau, device=device)
     a = a_GRF.sample(N).real
     a = 1 + 0.5*11*(1 + torch.tanh(a*100))
-    g_GRF = GaussianRF(dim=2, size=size, alpha=alpha_g, tau=tau)
+    g_GRF = GaussianRF(dim=2, size=size, alpha=alpha_g, tau=tau, device=device)
     g = g_GRF.sample(N).to(device)
     g = torch.view_as_real(g).permute(0, 3, 1, 2)
     g = g / torch.std(g) * torch.std(input[:, 1:])
@@ -136,25 +136,21 @@ def sample_helm(rate, input, alpha_a=1.5, alpha_g=3.5, tau=2, keepsize=False):
     return new_input.to(device), rate
 
 
-def sample_NS(rate, input, alpha_a=2, alpha_g=2, tau=2, keepsize=False):
+def sample_NS(rate, input, alpha_a=2, alpha_g=2, tau=2, keepsize=False, maxsize=256):
     device = input.device
     N = input.shape[0]
+    C = input.shape[1]
     size_input = input.shape[2]
     size = math.floor(size_input * rate) // 2 *2
     rate = size/size_input
 
-    a_GRF = GaussianRF(dim=2, size=size, alpha=alpha_a, tau=tau)
-    a = a_GRF.sample(N).real.to(device)
-    a = a / torch.std(a) * torch.std(input[:, 0])
-    g_GRF = GaussianRF(dim=2, size=size, alpha=alpha_g, tau=tau)
-    g = g_GRF.sample(N).real.to(device)
-    g = g / torch.std(g) * torch.std(input[:, 1:])
+    a_GRF = GaussianRF(dim=2, size=size, alpha=alpha_a, tau=tau, device=device)
+    a = a_GRF.sample(N*C).real.to(device).reshape(N, C, size, size)
+    a = 0.1 * a / torch.std(a) * torch.std(input)
 
-    ### interpolate
-    # input = torch.nn.functional.interpolate(input,
-    #                                 size=(size, size),
-    #                                 mode='bilinear',
-    #                                 align_corners=True)
+    # g_GRF = GaussianRF(dim=2, size=size, alpha=alpha_g, tau=tau)
+    # g = g_GRF.sample(N).real.to(device)
+    # g = g / torch.std(g) * torch.std(input[:, 1:])
 
     ### repeat
     #repeat = math.ceil(size / size_input)
@@ -166,15 +162,17 @@ def sample_NS(rate, input, alpha_a=2, alpha_g=2, tau=2, keepsize=False):
         input = torch.cat([input, input.flip(-1)], dim=-1)
     input = input[..., :size, :size]
 
-    x = torch.zeros(N, 5, size, size, dtype=torch.float32, device=device)
-    x[:, 0] = input[:, 0] + a
-    new_input = DarcyExtractBC(x, g)
-    new_input[:, 1:] = input[:, 1:] + new_input[:, 1:]
-
+    new_input = input + a
     new_input.to(device)
     if keepsize:
         new_input = torch.nn.functional.interpolate(new_input,
                                         size=(size_input, size_input),
                                         mode='bilinear',
                                         align_corners=True)
+    elif maxsize is not None:
+        new_input = torch.nn.functional.interpolate(new_input,
+                                        size=(maxsize, maxsize),
+                                        mode='bilinear',
+                                        align_corners=True)
+
     return new_input, rate

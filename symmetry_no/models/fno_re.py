@@ -182,7 +182,7 @@ class FNO_mlp(nn.Module):
 
         self.width = width
         self.depth = depth
-        self.in_channel = in_channel
+        self.in_channel = in_channel + 2
         self.out_channel = out_channel
         self.n_feature = 3
         self.sub = sub
@@ -213,7 +213,6 @@ class FNO_mlp(nn.Module):
     def forward(self, x, re=None):
         # x (batch, in_channels, X, Y)
         # re (batch, )
-        x = x[:, 0:1].repeat(1, 5, 1, 1)
 
         if self.norm:
             std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)

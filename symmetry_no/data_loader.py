@@ -544,7 +544,7 @@ class NSReader:
                  root_dir=ROOT_DIR + '/data/',
                  N=None,
                  order = "front",
-                 truncate=None, T=None, sub_s=None, sub_t=None,
+                 truncate=None, T=None, sub_s=None, sub_t=None, T_in=10,
                  Re = 1):
         """
         Args:
@@ -560,6 +560,7 @@ class NSReader:
         self.truncate = truncate
         self.sub_t = sub_t
         self.sub_s = sub_s
+        self.T_in = T_in
         self.order = order
 
         if self.root_dir:
@@ -570,22 +571,23 @@ class NSReader:
         assert os.path.isfile(self.filepath), f'Data file not found! ({self.filepath}).'
 
         # load data
+        T_out = T + T_in + 1
         if order == "front":
             data = torch.load(self.filepath)[:N]
             print(self.filepath, data.shape)
             truncate_S = data.shape[-1] // truncate
-            data = data[:, ::sub_t, ::sub_s, ::sub_s][:, :T+1, :truncate_S, :truncate_S]
+            data = data[:, ::sub_t, ::sub_s, ::sub_s][:, :T_out, :truncate_S, :truncate_S]
 
         else:
             data = torch.load(self.filepath)[-N:]
             print(self.filepath, data.shape)
             truncate_S = data.shape[-1] // truncate
-            data = data[:, ::sub_t, ::sub_s, ::sub_s][:, :T+1, :truncate_S, :truncate_S]
+            data = data[:, ::sub_t, ::sub_s, ::sub_s][:, :T_out, :truncate_S, :truncate_S]
 
         self.x, self.y = self.unpack_mat(data)
 
         if Re == None:
-            Re = 1
+            Re = 1000
         self.re = Re * torch.ones(self.x.shape[0], 1, requires_grad=False)
 
 
@@ -599,22 +601,17 @@ class NSReader:
         """
         # massage the input data
         S = data.shape[-1]
-        u0 = data[:, 0:self.T].reshape(self.N*self.T, S, S)
-        u1 = data[:, 1:self.T+1].reshape(self.N*self.T, S, S)
+        u0 = []
+        for i in range(self.T_in):
+            ui = data[:, i:self.T+i].reshape(self.N*self.T, 1, S, S)
+            u0.append(ui)
+        u0 = torch.cat(u0, dim=1)
+        u1 = data[:, self.T_in:self.T+self.T_in].reshape(self.N*self.T, S, S)
 
-        nchannel = 5  # 1 coefficient + 4 BC
-        n_samp = self.N * self.T
-        x = torch.zeros(n_samp, nchannel, S, S, dtype=torch.float32)
-        # Filter out boundary conditions (each boundary condition --> 1 channel)
-        x[:, 0, :, :] = u0
-
-        x = DarcyExtractBC(x, u1) # maybe no boundary for periodic cases
+        x = u0
         y = u1
         print(x.shape, y.shape, torch.mean(torch.abs(x)), torch.mean(torch.abs(y)))
-
         return x, y
-
-
 
 class NSData:
     """
