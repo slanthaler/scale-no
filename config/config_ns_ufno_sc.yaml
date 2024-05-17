@@ -1,7 +1,7 @@
 ---
 #
 name: 'ns_b_aug_mlp'
-run_name: 'NS FNO+U'
+run_name: 'NS FNO+U sc'
 
 dataset: 'NS'
 # fno2d
@@ -10,7 +10,8 @@ width: 32
 depth: 2
 level: 2
 mlp: False
-
+keepsize: True
+sample_type: "interp"
 
 # training
 learning_rate: 1e-3
@@ -60,7 +61,7 @@ test_re: [
 selfcon_data:
 
 #
-augmentation_loss: 0
+augmentation_loss: 1
 augmentation_samples: 1
 use_augmentation:
-sample_virtual_instance: 0
+sample_virtual_instance: 1

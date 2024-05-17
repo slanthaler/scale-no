@@ -1,8 +1,8 @@
 import sys
 import wandb
 import argparse
-#
-sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
+
+# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
 
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
 from symmetry_no.config_helper import ReadConfig
@@ -14,7 +14,7 @@ from symmetry_no.models.fno_re import *
 from symmetry_no.models.CNO import CNO
 from symmetry_no.models.unet import UNet2d
 from symmetry_no.selfconsistency import LossSelfconsistency
-from symmetry_no.upscale import sample_NS
+from symmetry_no.super_sample import sample_NS
 
 def main(config):
     #
@@ -64,7 +64,7 @@ def main(config):
     modes = modes1
     modes_list = []
     width_list = []
-    for i in range(depth):
+    for i in range(10):
         n = 2**i
         modes_list.append(modes//n)
         width_list.append(n*width)
@@ -78,7 +78,7 @@ def main(config):
     elif config.model == "FNO_d":
         model = FNO2d_doubled(modes1, modes2, width, depth, in_channel=in_channel).to(device)
     elif config.model == "FNO_u":
-        model = FNO_U(modes_list, modes_list, width_list, depth=depth, layer=3, mlp=mlp, in_channel=in_channel, out_channel=1).to(device)
+        model = FNO_U(modes_list, modes_list, width_list, level=config.level, depth=depth, mlp=mlp, in_channel=in_channel, out_channel=1).to(device)
     elif config.model == "FNO_re":
         model = FNO_mlp(width, modes1, modes2, depth, mlp=mlp, in_channel=in_channel, out_channel=1).to(device)
     else:
@@ -134,10 +134,11 @@ def main(config):
                 train_aug += loss_aug.item()
 
             if sample_virtual_instance and (epoch >= start_selfcon):
-                rate = torch.rand(1)*4*(epoch/epochs) + 1
-                new_x, rate = sample_NS(input=x, rate=rate, keepsize=True)
+                rate = torch.rand(1)*10*(epoch/epochs) + 1
+                new_x, rate = sample_NS(input=x, rate=rate, keepsize=config.keepsize, sample_type=config.sample_type)
                 new_re = re * rate
                 loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re, type=config.dataset)
+                loss_sc = torch.clamp(loss_sc, max=torch.median(loss_sc).item()) # discard half of the virtual instances
                 loss += 0.5 * loss_sc * (epoch/epochs)
                 train_sc += loss_sc.item()
 
@@ -189,7 +190,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='ns_fno',
+                        default='ns_ufno',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,

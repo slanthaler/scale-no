@@ -136,15 +136,22 @@ def sample_helm(rate, input, alpha_a=1.5, alpha_g=3.5, tau=2, keepsize=False):
     return new_input.to(device), rate
 
 
-def sample_NS(rate, input, alpha_a=2, alpha_g=2, tau=2, keepsize=False, maxsize=256):
+def sample_NS(rate, input, alpha_a=2, alpha_g=2, tau=2, sample_type="interp", keepsize=False, maxsize=256):
     device = input.device
     N = input.shape[0]
     C = input.shape[1]
     size_input = input.shape[2]
-    size = math.floor(size_input * rate) // 2 *2
-    rate = size/size_input
+    rate = rate.to(device)
+    if keepsize:
+        size = size_input
+    elif maxsize is not None:
+        size = maxsize
+    else:
+        size = math.floor(size_input * rate) // 2 *2
+        # rate = size/size_input # adject f
 
-    a_GRF = GaussianRF(dim=2, size=size, alpha=alpha_a, tau=tau, device=device)
+    a_GRF = GaussianRF(dim=2, size=size, alpha=0.5, sigma=4/rate, exp=True, device=device)
+    # a_GRF = GaussianRF(dim=2, size=size, alpha=alpha_a, tau=tau, device=device)
     a = a_GRF.sample(N*C).real.to(device).reshape(N, C, size, size)
     a = 0.1 * a / torch.std(a) * torch.std(input)
 
@@ -157,22 +164,18 @@ def sample_NS(rate, input, alpha_a=2, alpha_g=2, tau=2, keepsize=False, maxsize=
     #input = input.repeat(1, 1, repeat, repeat)[:, :, :size, :size]
 
     ### flip
-    while input.shape[-1] < size:
-        input = torch.cat([input, input.flip(-2)], dim=-2)
-        input = torch.cat([input, input.flip(-1)], dim=-1)
-    input = input[..., :size, :size]
+    if sample_type == "flip":
+        while input.shape[-1] < size:
+            input = torch.cat([input, input.flip(-2)], dim=-2)
+            input = torch.cat([input, input.flip(-1)], dim=-1)
+        input = input[..., :size, :size]
+    ### interp
+    elif sample_type == "interp":
+        if input.shape[-1] != size:
+            input = torch.nn.functional.interpolate(input,
+                                            size=(size, size),
+                                            mode='bilinear',
+                                            align_corners=True)
 
     new_input = input + a
-    new_input.to(device)
-    if keepsize:
-        new_input = torch.nn.functional.interpolate(new_input,
-                                        size=(size_input, size_input),
-                                        mode='bilinear',
-                                        align_corners=True)
-    elif maxsize is not None:
-        new_input = torch.nn.functional.interpolate(new_input,
-                                        size=(maxsize, maxsize),
-                                        mode='bilinear',
-                                        align_corners=True)
-
     return new_input, rate

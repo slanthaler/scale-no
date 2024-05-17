@@ -33,7 +33,7 @@ class SpectralConv2d(nn.Module):
         self.modes2 = modes2
         self.sub = sub
         self.mlp = mlp
-        self.p = MLP_complex(2*self.n_feature + self.n_feature, in_channels, in_channels)  # k_mat + Re
+        self.p = MLP(2*self.n_feature + self.n_feature, in_channels, in_channels, dtype=torch.cfloat)  # k_mat + Re
 
         self.norm1 = nn.GroupNorm(1, in_channels)
         self.norm2 = nn.GroupNorm(1, out_channels)
@@ -79,7 +79,7 @@ class SpectralConv2d(nn.Module):
         return k_mat
 
     def embed_re(self, re, S1, S2):
-        pow = torch.arange(start=1, end=self.n_feature+1, device=device).reshape(1, self.n_feature, 1, 1) /self.n_feature
+        pow = torch.arange(start=1, end=self.n_feature+1, device=re.device).reshape(1, self.n_feature, 1, 1) /self.n_feature
         re_mat = torch.pow(re, pow).repeat(1,1, S1, S2 // 2 +1)
         return re_mat
 
@@ -95,14 +95,14 @@ class SpectralConv2d(nn.Module):
         S1, S2 = x.shape[-2], x.shape[-1]
 
         #Compute Fourier coeffcients up to factor of e^(- something constant)
-        x_ft = torch.fft.rfft2(x, norm="backward")
+        x_ft = torch.fft.rfft2(x, norm="forward")
 
         # add wavenumber k_mat
         k_mat = self.get_k(batchsize, S1, S2, device=x.device)
         re_mat = self.embed_re(Re, S1, S2)
         feature = self.p(torch.cat([k_mat, re_mat], dim=1))
-        # x_ft = torch.cat([x_ft, k_mat, re_mat], dim=1)
         x_ft = x_ft * feature
+        x_ft = x_ft * (x_ft.abs() > 0.05)
 
         if self.mlp:
             # MLP layer
@@ -125,7 +125,7 @@ class SpectralConv2d(nn.Module):
             out_ft[:, :, -m1:, :m2] = self.compl_mul2d(x_ft[:, :, -m1:, :m2], self.weights4[..., -m1:, :m2])
 
         #Return to physical space
-        x = torch.fft.irfft2(out_ft, s=(S1, S2), norm="backward")
+        x = torch.fft.irfft2(out_ft, s=(S1, S2), norm="forward")
 
         if self.sub > 0:
             x = x[:,:,:Nx,:Ny]
@@ -133,15 +133,19 @@ class SpectralConv2d(nn.Module):
         x = self.norm2(x)
         return x
 
+
 class MLP(nn.Module):
-    def __init__(self, in_channels, out_channels, mid_channels):
+    def __init__(self, in_channels, out_channels, mid_channels, dtype=torch.float):
         super(MLP, self).__init__()
-        self.mlp1 = nn.Conv2d(in_channels, mid_channels, 1)
-        self.mlp2 = nn.Conv2d(mid_channels, out_channels, 1)
+        self.mlp1 = nn.Conv2d(in_channels, mid_channels, 1, padding="same", dtype=dtype)
+        self.mlp2 = nn.Conv2d(mid_channels, out_channels, 1, padding="same", dtype=dtype)
 
     def forward(self, x):
         x = self.mlp1(x)
-        x = F.gelu(x)
+        if torch.is_complex(x):
+            x = F.gelu(x.real) + 1j * F.gelu(x.imag)
+        else:
+            x = F.gelu(x)
         x = self.mlp2(x)
         return x
 
@@ -191,7 +195,7 @@ class FNO_mlp(nn.Module):
 
         #self.p = nn.Linear(self.in_channel, self.width) # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
         # self.p = MLP(self.in_channel+1, self.width, self.width)
-        self.p = MLP(self.in_channel + 4*self.n_feature, self.width, self.width)
+        self.p = MLP(self.in_channel, self.width, self.width)
         self.encode_re1 = nn.Linear(1, self.width)
         self.encode_re2 = nn.Linear(self.width, 1)
 
@@ -222,13 +226,10 @@ class FNO_mlp(nn.Module):
 
         if re==None:
             re = torch.ones(x.shape[0], 1, device=x.device)
-        # re = self.encode_re1(re)
-        # re = F.gelu(re)
-        # re = self.encode_re2(re)
 
         re = re.reshape(-1, 1, 1, 1)
         grid, grid_re = self.get_grid(x.shape, re, x.device)
-        x = torch.cat((x, grid, grid_re), dim=1) # 1 is the channel dimension
+        x = torch.cat((x, grid), dim=1) # 1 is the channel dimension
         x = self.p(x)
 
         for i in range(self.depth):

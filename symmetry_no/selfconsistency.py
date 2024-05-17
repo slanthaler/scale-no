@@ -8,7 +8,7 @@ from symmetry_no.darcy_utilities import DarcyExtractBC
 from symmetry_no.helmholtz_utilities import HelmholtzExtractBC
 
 
-def LossSelfconsistency(model,x,loss_fn,y=None,re=None,type="darcy",plot=False):
+def LossSelfconsistency(model,x,loss_fn,y=None,re=None, type="darcy",plot=False):
     """
     Selfconsistency loss: 
 

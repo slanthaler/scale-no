@@ -1,7 +1,7 @@
 ---
 #
 name: 'ns_b_aug_mlp'
-run_name: 'NS RE FNO-re sc'
+run_name: 'NS FNO-re sc'
 
 dataset: 'NS'
 # fno2d
@@ -9,6 +9,8 @@ modes: 32
 width: 32
 depth: 2
 mlp: False
+keepsize: True
+sample_type: "interp"
 
 # training
 learning_rate: 1e-3

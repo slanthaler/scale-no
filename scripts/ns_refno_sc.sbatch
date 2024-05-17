@@ -19,5 +19,5 @@ source /home/zongyili/.bashrc_2022
 conda activate cuda12
 
 # run code
-python3 /central/groups/astuart/zongyi/symmetry-no/symmetry_no/train_ns.py -n ns_refno
+python3 /central/groups/astuart/zongyi/symmetry-no/symmetry_no/train_ns.py -n ns_refno_sc
 

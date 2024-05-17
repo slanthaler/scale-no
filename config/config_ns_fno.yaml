@@ -9,6 +9,7 @@ modes: 32
 width: 32
 depth: 2
 mlp: False
+keepsize: True
 
 # training
 learning_rate: 1e-3
@@ -34,8 +35,8 @@ sub_t: 1
 #grid_size: 128
 
 # datasets
-#data_dir: '/media/wumming/HHD/HHD_data/KF'
-data_dir: '/central/groups/tensorlab/zongyi/KF'
+data_dir: '/media/wumming/HHD/HHD_data/KF'
+#data_dir: '/central/groups/tensorlab/zongyi/KF'
 
 train_data: 'KF_f0_Re1000_N60_T300_S256_train.pt'
 train_re: 1000
