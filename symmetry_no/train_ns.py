@@ -190,7 +190,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='ns_ufno',
+                        default='ns_refno_sc',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,
