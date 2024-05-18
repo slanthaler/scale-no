@@ -134,12 +134,12 @@ def main(config):
                 train_aug += loss_aug.item()
 
             if sample_virtual_instance and (epoch >= start_selfcon):
-                rate = torch.rand(1)*10*(epoch/epochs) + 1
+                rate = torch.pow(2, 3*(epoch/epochs)*torch.rand(1, device=device, requires_grad=False))
                 new_x, rate = sample_NS(input=x, rate=rate, keepsize=config.keepsize, sample_type=config.sample_type)
                 new_re = re * rate
-                loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re, type=config.dataset)
-                loss_sc = torch.clamp(loss_sc, max=torch.median(loss_sc).item()) # discard half of the virtual instances
-                loss += 0.5 * loss_sc * (epoch/epochs)
+                loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re, rate=rate.item(), type=config.dataset)
+                # loss_sc = torch.clamp(loss_sc, max=batch_size*0.2) # discard bad virtual instances
+                loss += 0.25 * 1/rate.item() * loss_sc
                 train_sc += loss_sc.item()
 
             loss.backward()
@@ -190,7 +190,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='ns_refno_sc',
+                        default='ns_ufno_sc_full',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,

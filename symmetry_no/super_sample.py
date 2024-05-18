@@ -145,7 +145,7 @@ def sample_NS(rate, input, alpha_a=2, alpha_g=2, tau=2, sample_type="interp", ke
     if keepsize:
         size = size_input
     elif maxsize is not None:
-        size = maxsize
+        size = min(maxsize, math.floor(size_input * rate)//2*2)
     else:
         size = math.floor(size_input * rate) // 2 *2
         # rate = size/size_input # adject f
@@ -153,7 +153,7 @@ def sample_NS(rate, input, alpha_a=2, alpha_g=2, tau=2, sample_type="interp", ke
     a_GRF = GaussianRF(dim=2, size=size, alpha=0.5, sigma=4/rate, exp=True, device=device)
     # a_GRF = GaussianRF(dim=2, size=size, alpha=alpha_a, tau=tau, device=device)
     a = a_GRF.sample(N*C).real.to(device).reshape(N, C, size, size)
-    a = 0.1 * a / torch.std(a) * torch.std(input)
+    a = 0.05 * a / torch.std(a) * torch.std(input)
 
     # g_GRF = GaussianRF(dim=2, size=size, alpha=alpha_g, tau=tau)
     # g = g_GRF.sample(N).real.to(device)

@@ -119,7 +119,7 @@ class RandomCropResize:
         #
         assert self.scale_min<=1.0, f'Scaling factor can at most be 1.0, got {scale_min=}'
 
-    def get_params(self, x, y, re=1):
+    def get_params(self, x, y, re=1, rate=None):
         """Get parameters for ``crop`` for a random sized crop.
 
         Args:
@@ -135,13 +135,17 @@ class RandomCropResize:
         #        
         size_min = max(self.size_min,int(round(self.scale_min * width)))
         for _ in range(10):
-            rnd = torch.rand(1)
-            w = size_min + int((width-size_min) * rnd)
-            h = size_min + int((height-size_min) * rnd)
+            if rate == None:
+                rnd = torch.rand(1)
+                w = size_min + int((width-size_min) * rnd)
+                h = size_min + int((height-size_min) * rnd)
+            else:
+                w = min(size_min, width//rate)
+                h = min(size_min, height//rate)
 
-            # just for sanity
-            w = min(w,width)
-            h = min(h,height)
+            # # just for sanity
+            # w = min(w,width)
+            # h = min(h,height)
 
             scale = np.sqrt((w/width) * (h/height))
             re = re*scale

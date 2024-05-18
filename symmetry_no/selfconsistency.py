@@ -8,7 +8,7 @@ from symmetry_no.darcy_utilities import DarcyExtractBC
 from symmetry_no.helmholtz_utilities import HelmholtzExtractBC
 
 
-def LossSelfconsistency(model,x,loss_fn,y=None,re=None, type="darcy",plot=False):
+def LossSelfconsistency(model,x,loss_fn,y=None,re=None,rate=None,type="darcy",plot=False):
     """
     Selfconsistency loss: 
 
@@ -38,7 +38,7 @@ def LossSelfconsistency(model,x,loss_fn,y=None,re=None, type="darcy",plot=False)
     # If y is given, we use it as the ground truth. the gradient only flow to y_small_
     if y!=None:
         # resample on smaller domain
-        i, j, h, w, re = transform_xy.get_params(x, y, re=re)
+        i, j, h, w, re = transform_xy.get_params(x, y, re=re, rate=rate)
         #
         x_small = transform_xy.crop(x, i, j, h, w)
         y_small = transform_xy.crop(y, i, j, h, w)
@@ -53,7 +53,7 @@ def LossSelfconsistency(model,x,loss_fn,y=None,re=None, type="darcy",plot=False)
         y = model(x, re)
 
         # resample on smaller domain
-        i,j,h,w,re = transform_xy.get_params(x, y, re=re)
+        i,j,h,w,re = transform_xy.get_params(x, y, re=re, rate=rate)
         #
         x_small = transform_xy.crop(x,i,j,h,w)
         y_small = transform_xy.crop(y,i,j,h,w)
