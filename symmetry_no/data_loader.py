@@ -571,7 +571,7 @@ class NSReader:
         assert os.path.isfile(self.filepath), f'Data file not found! ({self.filepath}).'
 
         # load data
-        T_out = T + T_in + 1
+        T_out = T + T_in +1
         if order == "front":
             data = torch.load(self.filepath)[:N]
             print(self.filepath, data.shape)
@@ -625,6 +625,7 @@ class NSData:
         self.truncate = config.truncate
         self.sub_t = config.sub_t
         self.sub_s = config.sub_s
+        self.T_in = config.T_in
 
         if isinstance(config.test_data, list):
             self.test_files = config.test_data
@@ -658,7 +659,7 @@ class NSData:
             root_dir=self.root_dir,
             N=self.n_train,
             order="front",
-            truncate=self.truncate, T=self.T, sub_s=self.sub_s, sub_t=self.sub_t,
+            truncate=self.truncate, T=self.T, sub_s=self.sub_s, sub_t=self.sub_t, T_in=self.T_in,
             Re=train_re,
         )
         # update the grid_size
@@ -676,7 +677,7 @@ class NSData:
                          root_dir=self.root_dir,
                          N=self.n_test,
                          order="back",
-                         truncate=self.truncate, T=self.T, sub_s=self.sub_s, sub_t=self.sub_t,
+                         truncate=self.truncate, T=self.T, sub_s=self.sub_s, sub_t=self.sub_t, T_in=self.T_in,
                          Re=test_re,)
             )
         if self.selfcon:

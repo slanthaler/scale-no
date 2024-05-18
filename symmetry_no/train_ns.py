@@ -129,7 +129,7 @@ def main(config):
 
             # augmentation via sub-sampling
             if use_augmentation:
-                loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re)
+                loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re, type=config.dataset)
                 loss += 1.0 * loss_aug
                 train_aug += loss_aug.item()
 
@@ -139,7 +139,7 @@ def main(config):
                 new_re = re * rate
                 loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re, rate=rate.item(), type=config.dataset)
                 # loss_sc = torch.clamp(loss_sc, max=batch_size*0.2) # discard bad virtual instances
-                loss += 0.25 * 1/rate.item() * loss_sc
+                loss += 0.5 * 1/rate.item() * loss_sc
                 train_sc += loss_sc.item()
 
             loss.backward()
@@ -190,7 +190,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='ns_ufno_sc_full',
+                        default='ns_ufno_sc',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,
