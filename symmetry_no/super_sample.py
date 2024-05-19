@@ -118,7 +118,11 @@ def sample_helm(rate, input, alpha_a=1.5, alpha_g=3.5, tau=2, keepsize=False):
 
 
     # For Helmholtz we repeat the input for larger size
-    input = input.repeat(1, 1, repeat, repeat)[:, :, :size, :size]
+    # input = input.repeat(1, 1, repeat, repeat)[:, :, :size, :size]
+    while input.shape[-1] < size:
+        input = torch.cat([input, input.flip(-2)], dim=-2)
+        input = torch.cat([input, input.flip(-1)], dim=-1)
+    input = input[..., :size, :size]
 
     x = torch.zeros(N, 9, size, size, dtype=torch.float32, device=device)
     x[:, 0] = a

@@ -360,8 +360,7 @@ class HelmholtzReader:
         assert not n_samp or n_samp <= input_data.shape[
             0], f'Number of requested samples {n_samp} exceeds available number of samples {input_data.shape[0]}.'
         #
-        Ns = input_data.shape[-1]
-        nchannel = 9  # 1 coefficient + 4 BC
+        nchannel = 9  # 1 coefficient + 4 BC *2
         x = torch.zeros(input_data.shape[0],
                         nchannel,
                         input_data.shape[2],
@@ -369,6 +368,13 @@ class HelmholtzReader:
         # Filter out boundary conditions (each boundary condition --> 1 channel)
         x[:, 0, :, :] = input_data[:, 0, :, :]
         x = HelmholtzExtractBC(x, y)
+
+        # nchannel = 5  # 1 coefficient + 4 BC
+        # x = torch.zeros(input_data.shape[0],
+        #                 nchannel,
+        #                 input_data.shape[2],
+        #                 input_data.shape[3], dtype=torch.float32)
+        # # Filter out boundary conditions (each boundary condition --> 1 channel)
         # x = DarcyExtractBC(x, x[:, 1, :, :])
         print(x.shape)
         #

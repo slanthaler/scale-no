@@ -2,7 +2,7 @@ import sys
 import wandb
 import argparse
 
-# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
+sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
 
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
 from symmetry_no.config_helper import ReadConfig
@@ -34,7 +34,7 @@ def main(config):
         data = DarcyData(config)
         n_train = config.n_train
         n_test = config.n_test
-        in_channel = 7
+        in_channel = 5
         out_channel = 1
 
     elif config.dataset == 'helmholtz':
@@ -42,7 +42,7 @@ def main(config):
         data = HelmholtzData(config)
         n_train = config.n_train
         n_test = config.n_test
-        in_channel = 11 # complex input output
+        in_channel = 9 # complex input output
         out_channel = 2
 
     elif config.dataset == 'NS':
@@ -74,15 +74,13 @@ def main(config):
         width_list.append(n*width)
 
     if config.model == "Unet" or config.model == "UNet":
-        model = UNet2d(in_dim=in_channel, out_dim=1, latent_size=S).to(device)
+        model = UNet2d(in_dim=in_channel, out_dim=out_channel, latent_size=S).to(device)
     elif config.model == "FNO":
-        model = FNO2d(modes1, modes2, width, depth, in_channel=in_channel).to(device)
-    elif config.model == "FNO_d":
-        model = FNO2d_doubled(modes1, modes2, width, depth, in_channel=in_channel).to(device)
+        model = FNO2d(modes1, modes2, width, depth, in_channel=in_channel, out_channel=out_channel, boundary=True).to(device)
     elif config.model == "FNO_u":
-        model = FNO_U(modes_list, modes_list, width_list, level=config.level, depth=depth, mlp=mlp, in_channel=in_channel, out_channel=1).to(device)
+        model = FNO_U(modes_list, modes_list, width_list, level=config.level, depth=depth, mlp=mlp, in_channel=in_channel, out_channel=out_channel, boundary=True).to(device)
     elif config.model == "FNO_re":
-        model = FNO_mlp(width, modes1, modes2, depth, mlp=mlp, in_channel=in_channel, out_channel=1).to(device)
+        model = FNO_mlp(width, modes1, modes2, depth, mlp=mlp, in_channel=in_channel, out_channel=out_channel, boundary=True).to(device)
     else:
         raise NotImplementedError("model not implement")
     print('FNO2d parameter count: ', count_params(model))
@@ -137,11 +135,12 @@ def main(config):
                         train_aug += loss_aug.item()
 
                     if sample_virtual_instance and (epoch >= start_selfcon):
-                        rate = torch.rand(1) * 3 * (epoch / epochs) + 1
+                        # rate = torch.rand(1) * 2 * (epoch / epochs) + 1
+                        rate = 2
                         new_x, rate = sample_helm(input=x, rate=rate, keepsize=True)
                         new_re = re * rate
                         loss_sc = LossSelfconsistency(model, new_x, loss_fn, rate=rate, re=new_re, type="helmholtz")
-                        loss += 0.5 * loss_sc * (epoch / epochs)
+                        loss += 0.25 * loss_sc * (epoch / epochs)
                         train_sc += loss_sc.item()
 
                     # # unsupervised training (selfconsistency constraint)

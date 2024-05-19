@@ -5,7 +5,7 @@ run_name: 'helmholtz'
 dataset: 'helmholtz'
 
 # fno2d
-model: "FNO_re" # "UNet", "FNO", "FNO_re"
+model: "FNO" # "UNet", "FNO", "FNO_re"
 
 modes: 64
 width: 32

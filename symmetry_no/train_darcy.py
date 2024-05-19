@@ -2,7 +2,7 @@ import sys
 import wandb
 import argparse
 
-# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
+sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
 
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
 from symmetry_no.config_helper import ReadConfig
@@ -56,7 +56,9 @@ def main(config):
     width = config.width
     depth = config.depth
     modes = config.modes
-    model = FNO2d_doubled(modes, modes, width, depth).to(device)
+
+    model = FNO2d(modes, modes, width, depth, in_channel=in_channel, boundary=True).to(device)
+    # model = FNO2d_doubled(modes, modes, width, depth).to(device)
 
     batch_size = config.batch_size
     epochs = config.epochs

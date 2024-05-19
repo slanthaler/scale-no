@@ -102,7 +102,6 @@ class SpectralConv2d(nn.Module):
         re_mat = self.embed_re(Re, S1, S2)
         feature = self.p(torch.cat([k_mat, re_mat], dim=1))
         x_ft = x_ft * feature
-        x_ft = x_ft * (x_ft.abs() > 0.05)
 
         if self.mlp:
             # MLP layer
@@ -168,7 +167,7 @@ class MLP_complex(nn.Module):
         return x
 
 class FNO_mlp(nn.Module):
-    def __init__(self, width, modes1=0, modes2=0, depth=4, in_channel=7, out_channel=1, sub=0, norm=False, mlp=False):
+    def __init__(self, width, modes1=0, modes2=0, depth=4, in_channel=7, out_channel=1, sub=0, boundary=False, mlp=False):
         super(FNO_mlp, self).__init__()
 
         """
@@ -190,7 +189,7 @@ class FNO_mlp(nn.Module):
         self.out_channel = out_channel
         self.n_feature = 3
         self.sub = sub
-        self.norm = norm
+        self.boundary = boundary
         self.pow = torch.arange(start=0, end=self.n_feature).reshape(1, self.n_feature, 1, 1) / (self.n_feature - 1)
 
         #self.p = nn.Linear(self.in_channel, self.width) # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
@@ -218,7 +217,7 @@ class FNO_mlp(nn.Module):
         # x (batch, in_channels, X, Y)
         # re (batch, )
 
-        if self.norm:
+        if self.boundary:
             std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
             x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
         # std = torch.std(x.clone(), dim=[1, 2, 3], keepdim=True)
@@ -241,7 +240,7 @@ class FNO_mlp(nn.Module):
 
         x = self.q(x)
 
-        if self.norm:
+        if self.boundary:
             x = x*std
             del std
 

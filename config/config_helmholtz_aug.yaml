@@ -1,6 +1,6 @@
 ---
 #
-name: 'helmholtz'
+name: 'helmholtz aug'
 run_name: 'helmholtz'
 dataset: 'helmholtz'
 
@@ -65,7 +65,7 @@ test_re: [1,2,5,10,25,50,100]
 selfcon_data:
 selfcon_re:
 #
-augmentation_loss: 0
+augmentation_loss: 1
 augmentation_samples: 2
 use_augmentation:
 sample_virtual_instance: 0

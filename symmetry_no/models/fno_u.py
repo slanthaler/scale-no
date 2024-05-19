@@ -242,7 +242,7 @@ class Local_disco(nn.Module):
         return x
 
 class FNO_U(nn.Module):
-    def __init__(self, modes1_list, modes2_list, width_list, level, mlp, depth=3, in_channel=9, out_channel=1, n_feature=5):
+    def __init__(self, modes1_list, modes2_list, width_list, level, mlp, depth=3, in_channel=9, out_channel=1, n_feature=5, boundary=False):
         super(FNO_U, self).__init__()
 
         """
@@ -268,6 +268,7 @@ class FNO_U(nn.Module):
         self.pad = 8 # 1/1, 1/2, 1/4, 1/8
         self.n_feature = n_feature
         self.size = 128
+        self.boundary = boundary
 
         self.p = MLP(self.in_c, self.width, 2*self.width) # input channel is 3: (a(x, y), x, y)
 
@@ -288,6 +289,9 @@ class FNO_U(nn.Module):
 
     def forward(self, x, re):
 
+        if self.boundary:
+            std = torch.std(x[:,1:].clone(), dim=[1,2,3], keepdim=True)
+            x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
         if re==None:
             re = torch.ones(x.shape[0], device=x.device)
 
@@ -315,6 +319,11 @@ class FNO_U(nn.Module):
                 x = F.gelu(x)
 
         x = self.q(x)
+
+        if self.boundary:
+            x = x*std
+            del std
+
         return x
 
     def get_grid(self, shape, device):
