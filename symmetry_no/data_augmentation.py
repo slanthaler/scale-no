@@ -140,8 +140,8 @@ class RandomCropResize:
                 w = size_min + int((width-size_min) * rnd)
                 h = size_min + int((height-size_min) * rnd)
             else:
-                w = min(size_min, width//rate)
-                h = min(size_min, height//rate)
+                w = max(size_min, width//rate)
+                h = max(size_min, height//rate)
 
             # # just for sanity
             # w = min(w,width)
