@@ -58,7 +58,6 @@ def main(config):
     modes = config.modes
     model = FNO2d_doubled(modes, modes, width, depth).to(device)
 
-    #
     batch_size = config.batch_size
     epochs = config.epochs
     epoch_test = config.epoch_test

@@ -11,6 +11,8 @@ from symmetry_no.models.fno2d import *
 from symmetry_no.models.fno2d_doubled import *
 from symmetry_no.models.fno_u import *
 from symmetry_no.models.fno_re import *
+from symmetry_no.models.unet import UNet2d
+
 from symmetry_no.selfconsistency import LossSelfconsistency
 from symmetry_no.super_sample import sample_helm
 
@@ -55,24 +57,34 @@ def main(config):
         print("config.dataset should be either 'darcy' or 'NS'.")
 
     # Initialize our model, recursively go over all modules and convert their parameters and buffers to CUDA tensors (if device is set to cuda)
-
+    modes1 = config.modes
+    modes2 = config.modes
     width = config.width
     depth = config.depth
-    modes = config.modes
+    mlp = config.mlp
 
-    # model = FNO2d(modes1, modes2, width, depth).to(device)
-    # model = FNO2d_doubled(modes1, modes2, width, depth).to(device)
+    ### U-shape FNO
+    S = config.S
+    modes = modes1
     modes_list = []
     width_list = []
-    for i in range(depth):
+    for i in range(10):
         n = 2**i
         modes_list.append(modes//n)
         width_list.append(n*width)
 
-    # model = FNO2d(modes, modes, width, depth, in_channel=11, out_channel=2).to(device)
-    # model = FNO2d_doubled(modes,modes,width,depth, in_channel=11, out_channel=2).to(device)
-    # model = FNOmlpRe(modes_list, modes_list, width_list, depth=3, mlp=True, in_channel=11, out_channel=2).cuda()
-    model = FNO_mlp(width, modes, modes, depth, in_channel=in_channel, out_channel=out_channel).to(device)
+    if config.model == "Unet" or config.model == "UNet":
+        model = UNet2d(in_dim=in_channel, out_dim=1, latent_size=S).to(device)
+    elif config.model == "FNO":
+        model = FNO2d(modes1, modes2, width, depth, in_channel=in_channel).to(device)
+    elif config.model == "FNO_d":
+        model = FNO2d_doubled(modes1, modes2, width, depth, in_channel=in_channel).to(device)
+    elif config.model == "FNO_u":
+        model = FNO_U(modes_list, modes_list, width_list, level=config.level, depth=depth, mlp=mlp, in_channel=in_channel, out_channel=1).to(device)
+    elif config.model == "FNO_re":
+        model = FNO_mlp(width, modes1, modes2, depth, mlp=mlp, in_channel=in_channel, out_channel=1).to(device)
+    else:
+        raise NotImplementedError("model not implement")
     print('FNO2d parameter count: ', count_params(model))
 
     #
@@ -120,7 +132,7 @@ def main(config):
                 # augmentation via sub-sampling
                 for j in range(augmentation_samples):
                     if augmentation_loss:
-                        loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re)
+                        loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re, type="helmholtz")
                         loss += augmentation_loss * loss_aug
                         train_aug += loss_aug.item()
 
@@ -128,7 +140,7 @@ def main(config):
                         rate = torch.rand(1) * 3 * (epoch / epochs) + 1
                         new_x, rate = sample_helm(input=x, rate=rate, keepsize=True)
                         new_re = re * rate
-                        loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re)
+                        loss_sc = LossSelfconsistency(model, new_x, loss_fn, rate=rate, re=new_re, type="helmholtz")
                         loss += 0.5 * loss_sc * (epoch / epochs)
                         train_sc += loss_sc.item()
 

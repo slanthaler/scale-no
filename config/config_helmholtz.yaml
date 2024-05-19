@@ -5,9 +5,12 @@ run_name: 'helmholtz'
 dataset: 'helmholtz'
 
 # fno2d
-modes: 16
-width: 64
-depth: 4
+model: "FNO_u" # "UNet", "FNO", "FNO_re"
+
+modes: 64
+width: 32
+depth: 2
+mlp: False
 
 # training
 learning_rate: 1e-3
@@ -18,9 +21,10 @@ epochs: 200
 n_train: 1024
 n_test: 128
 n_selfcon: 1024
-epochs_selfcon: 50 # now epochs_selfcon is the epoch to start self-consistency loss
+epochs_selfcon: 1 # now epochs_selfcon is the epoch to start self-consistency loss
 epoch_test: 5
 
+S: 128
 
 # datasets
 data_dir: '/media/wumming/HHD/HHD_data/helmholtz/data'
@@ -57,6 +61,6 @@ selfcon_data:
 selfcon_re:
 #
 augmentation_loss: 1
-augmentation_samples: 1
+augmentation_samples: 3
 use_augmentation:
 sample_virtual_instance: 1
