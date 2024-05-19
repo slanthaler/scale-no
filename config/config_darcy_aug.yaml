@@ -1,7 +1,7 @@
 ---
 #
 name: 'darcy'
-run_name: 'Darcy'
+run_name: 'Darcy aug'
 dataset: 'darcy'
 
 # fno2d
@@ -44,7 +44,7 @@ test_data: [
 selfcon_data:
 
 #
-augmentation_loss: 0
+augmentation_loss: 1
 augmentation_samples: 3
 use_augmentation:
 sample_virtual_instance: 0

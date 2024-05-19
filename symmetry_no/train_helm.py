@@ -12,7 +12,7 @@ from symmetry_no.models.fno2d_doubled import *
 from symmetry_no.models.fno_u import *
 from symmetry_no.models.fno_re import *
 from symmetry_no.selfconsistency import LossSelfconsistency
-from symmetry_no.gaussian_random_field import sample_helm
+from symmetry_no.super_sample import sample_helm
 
 
 def main(config):
@@ -159,9 +159,9 @@ def main(config):
                         test_l2[i] += loss_fn(out.view(batch_size, -1), y.view(batch_size, -1)).item()
 
         # normalize losses
-        train_l2 /= n_train * len(data.train_loaders)
-        train_sc /= n_train * len(data.train_loaders) * augmentation_samples
-        train_aug /= n_train * len(data.train_loaders) * augmentation_samples
+        train_l2 /= (n_train * len(data.train_loaders))
+        train_sc /= (n_train * len(data.train_loaders) * augmentation_samples)
+        train_aug /= (n_train * len(data.train_loaders) * augmentation_samples)
         test_l2 /= n_test
 
         t2 = default_timer()
@@ -176,7 +176,7 @@ def main(config):
     #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
     if args.wandb:
         torch.save(model.state_dict(), "model.h5")
-    wandb.save('model.h5')
+    wandb.save('../model.h5')
 
 
 #

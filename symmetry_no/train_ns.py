@@ -128,19 +128,20 @@ def main(config):
             train_l2 += loss.item()
 
             # augmentation via sub-sampling
-            if use_augmentation:
-                loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re, type=config.dataset)
-                loss += 1.0 * loss_aug
-                train_aug += loss_aug.item()
+            for j in range(augmentation_samples):
+                if use_augmentation:
+                    loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re, type=config.dataset)
+                    loss += 1.0 * loss_aug
+                    train_aug += loss_aug.item()
 
-            if sample_virtual_instance and (epoch >= start_selfcon):
-                rate = torch.pow(2, 3*(epoch/epochs)*torch.rand(1, device=device, requires_grad=False))
-                new_x, rate = sample_NS(input=x, rate=rate, keepsize=config.keepsize, sample_type=config.sample_type)
-                new_re = re * rate
-                loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re, rate=rate.item(), type=config.dataset)
-                # loss_sc = torch.clamp(loss_sc, max=batch_size*0.2) # discard bad virtual instances
-                loss += 0.5 * 1/rate.item() * loss_sc
-                train_sc += loss_sc.item()
+                if sample_virtual_instance and (epoch >= start_selfcon):
+                    rate = torch.pow(2, 3*(epoch/epochs)*torch.rand(1, device=device, requires_grad=False))
+                    new_x, rate = sample_NS(input=x, rate=rate, keepsize=config.keepsize, sample_type=config.sample_type)
+                    new_re = re * rate
+                    loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re, rate=rate.item(), type=config.dataset)
+                    # loss_sc = torch.clamp(loss_sc, max=batch_size*0.2) # discard bad virtual instances
+                    loss += 0.25 * loss_sc
+                    train_sc += loss_sc.item()
 
             loss.backward()
             optimizer.step()

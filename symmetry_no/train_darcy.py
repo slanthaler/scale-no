@@ -11,8 +11,9 @@ from symmetry_no.models.fno2d import *
 from symmetry_no.models.fno2d_doubled import *
 from symmetry_no.models.fno_u import *
 from symmetry_no.models.fno_re import *
+from symmetry_no.models.unet import UNet2d
 from symmetry_no.selfconsistency import LossSelfconsistency
-from symmetry_no.gaussian_random_field import sample_Darcy, sample_NS
+from symmetry_no.super_sample import sample_Darcy
 
 def main(config):
     #
@@ -31,43 +32,31 @@ def main(config):
         data = DarcyData(config)
         n_train = config.n_train
         n_test = config.n_test
+        in_channel = 5
 
     elif config.dataset == 'helmholtz':
         print('Loading Helmholtz datasets...')
         data = HelmholtzData(config)
         n_train = config.n_train
         n_test = config.n_test
+        in_channel = 9
 
     elif config.dataset == 'NS':
         print('Loading NS datasets...')
         data = NSData(config)
         n_train = config.n_train * config.T
         n_test = config.n_test * config.T
+        in_channel = config.T_in
 
     else:
         print("config.dataset should be either 'darcy' or 'NS'.")
 
     # Initialize our model, recursively go over all modules and convert their parameters and buffers to CUDA tensors (if device is set to cuda)
-    modes1 = config.modes
-    modes2 = config.modes
+
     width = config.width
     depth = config.depth
-
-    ### U-shape FNO
-    # S = config.S
-    # modes = S//2
-    # modes_list = []
-    # width_list = []
-    # for i in range(depth):
-    #     n = 2**i
-    #     modes_list.append(modes//n)
-    #     width_list.append(n*width)
-
-    # model = FNO2d(modes1, modes2, width, depth).to(device)
-    model = FNO2d_doubled(modes1, modes2, width, depth).to(device)
-    # model = FNO_U(modes_list, modes_list, width_list, depth=3, mlp=True, in_channel=7, out_channel=1).cuda()
-    # model = FNO_mlp(width, modes1, modes2, depth, in_channel=7, out_channel=1).to(device)
-    print('FNO2d parameter count: ', count_params(model))
+    modes = config.modes
+    model = FNO2d_doubled(modes, modes, width, depth).to(device)
 
     #
     batch_size = config.batch_size
@@ -112,17 +101,18 @@ def main(config):
             train_l2 += loss.item()
 
             # augmentation via sub-sampling
-            if use_augmentation:
-                loss_aug = LossSelfconsistency(model, x, loss_fn, y=y)
-                loss += 1.0 * loss_aug
-                train_aug += loss_aug.item()
+            for j in range(augmentation_samples):
+                if use_augmentation:
+                    loss_aug = LossSelfconsistency(model, x, loss_fn, y=y)
+                    loss += 1.0 * loss_aug
+                    train_aug += loss_aug.item()
 
-            if sample_virtual_instance and (epoch >= start_selfcon):
-                rate = torch.rand(1)*3*(epoch/epochs) + 1
-                new_x, rate = sample_Darcy(input=x, rate=rate, keepsize=True)
-                loss_sc = LossSelfconsistency(model, new_x, loss_fn)
-                loss += 0.2 * loss_sc * (epoch/epochs)
-                train_sc += loss_sc.item()
+                if sample_virtual_instance and (epoch >= start_selfcon):
+                    rate = torch.rand(1)*3*(epoch/epochs) + 2
+                    new_x, rate = sample_Darcy(input=x, rate=rate, keepsize=True)
+                    loss_sc = LossSelfconsistency(model, new_x, loss_fn, rate=rate)
+                    loss += 0.25 * loss_sc * (epoch/epochs)
+                    train_sc += loss_sc.item()
 
             # # unsupervised training (selfconsistency constraint)
             # if data.selfcon and (track_selfcon or epoch >= start_selfcon):

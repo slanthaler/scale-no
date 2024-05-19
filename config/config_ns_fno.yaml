@@ -26,7 +26,7 @@ epochs_selfcon: 1 # now epochs_selfcon is the epoch to start self-consistency lo
 epoch_test: 5
 
 truncate: 2 # truncate to sub-domain
-S: 128
+S: 1
 T: 290
 T_in: 10
 sub_s: 1
