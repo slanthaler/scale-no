@@ -19,5 +19,5 @@ source /home/zongyili/.bashrc_2022
 conda activate cuda12
 
 # run code
-python3 /central/groups/astuart/zongyi/symmetry-no/symmetry_no/train_darcy.py -n helmholtz_sc
+python3 /central/groups/astuart/zongyi/symmetry-no/symmetry_no/train_helm.py -n helmholtz_sc
 
