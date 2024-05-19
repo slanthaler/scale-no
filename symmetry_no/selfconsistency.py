@@ -94,5 +94,5 @@ def LossSelfconsistency(model,x,loss_fn,y=None,re=None,rate=None,type="darcy",pl
             plt.savefig(f'darcy_sc.png')
             print("finish plotting")
 
-        return loss_fn(y_small.detach(), y_small_)
+        return loss_fn(y_small, y_small_)
 

@@ -2,8 +2,8 @@ import sys
 import wandb
 import argparse
 
-sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
-
+# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
+#
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
 from symmetry_no.config_helper import ReadConfig
 from symmetry_no.wandb_utilities import *
@@ -109,10 +109,10 @@ def main(config):
                     train_aug += loss_aug.item()
 
                 if sample_virtual_instance and (epoch >= start_selfcon):
-                    rate = torch.rand(1)*3*(epoch/epochs) + 2
+                    rate = torch.pow(2, 2*torch.rand(1, device=device)-1).item()
                     new_x, rate = sample_Darcy(input=x, rate=rate, keepsize=True)
-                    loss_sc = LossSelfconsistency(model, new_x, loss_fn, rate=rate)
-                    loss += 0.25 * loss_sc * (epoch/epochs)
+                    loss_sc = LossSelfconsistency(model, new_x, loss_fn)
+                    loss += 0.25 * loss_sc
                     train_sc += loss_sc.item()
 
             # # unsupervised training (selfconsistency constraint)
@@ -146,9 +146,9 @@ def main(config):
                         test_l2[i] += loss_fn(out.view(batch_size, -1), y.view(batch_size, -1)).item()
 
         # normalize losses
-        train_l2 /= n_train
-        train_sc /= n_train
-        train_aug /= n_train
+        train_l2 /= (n_train )
+        train_sc /= (n_train * augmentation_samples)
+        train_aug /= (n_train * augmentation_samples)
         test_l2 /= n_test
 
         t2 = default_timer()
@@ -174,7 +174,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='darcy',
+                        default='darcy_sc',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,

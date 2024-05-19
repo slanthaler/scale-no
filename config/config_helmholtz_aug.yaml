@@ -1,7 +1,7 @@
 ---
 #
-name: 'helmholtz aug'
-run_name: 'helmholtz'
+name: 'helmholtz'
+run_name: 'helmholtz aug'
 dataset: 'helmholtz'
 
 # fno2d

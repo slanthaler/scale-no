@@ -6,7 +6,7 @@ dataset: 'darcy'
 
 # fno2d
 modes: 20
-width: 32
+width: 64
 depth: 4
 
 # training
