@@ -72,7 +72,7 @@ class SpectralConv2d(nn.Module):
         k = k.reshape(1, 2, S1, modes2 + 1)
 
         # feature embedding
-        pow = 2*torch.arange(start=-self.n_feature, end=self.n_feature, step=2, device=device).reshape(self.n_feature, 1, 1, 1) /self.n_feature
+        pow = torch.arange(start=-self.n_feature, end=self.n_feature, step=2, device=device).reshape(self.n_feature, 1, 1, 1) /self.n_feature
         k_mat = torch.pow(k, pow)
         k_mat[:, 0, 0, :] = 0
         k_mat[:, 1, :, 0] = 0

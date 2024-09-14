@@ -45,34 +45,19 @@ def LossSelfconsistency(model,x,loss_fn,y=None,re=None,rate=None,new_y=None,size
 
     # If y is given, we use it as the ground truth. the gradient only flow to y_small_
     if y is not None:
-        mode = "aug"
 
         # resample on smaller domain
         i, j, h, w, re = transform_xy.get_params(x, y, re=re, rate=rate)
 
         x_small = transform_xy.crop(x, i, j, h, w)
         y_small = transform_xy.crop(y, i, j, h, w)
-        # if type == "NS":
-        #     y_small = y_small * (y_small.shape[-1] / y.shape[-1])
         x_small = ExtractBD(x_small, y_small)
 
         if group_action is not None:
             x_small, y_small = group_action(x_small, y_small)
         y_small_ = model(x_small, re)
 
-        # if plot and type == "helmholtz":
-        #     print(mode, i, j, h, w, re[0])
-        #     plot_boundary(x, x_small, y, y_small_)
-
         return loss_fn(y_small_, y_small)
-
-    # elif new_y is not None:
-    #     mode = "sc"
-    #     H, W = int(x.shape[-2]//(rate*2)), int(x.shape[-1]//(rate*2))
-    #     y = model(x, re)
-    #     y_small = y[..., :H, :W]
-    #     y_small_ = new_y[..., :H, :W]
-    #     return loss_fn(y_small, y_small_)
 
     # If y is not given, we set y=model(x). We treat the subdomain as ground truth can detach y_small_
     else:
@@ -93,10 +78,6 @@ def LossSelfconsistency(model,x,loss_fn,y=None,re=None,rate=None,new_y=None,size
         # if group_action is not None:
         #     x_small, y_small = group_action(x_small, y_small)
         y_small_ = model(x_small.detach(), re)
-
-        # if plot and type == "helmholtz":
-        #     print(mode, i, j, h, w, re[0])
-        #     plot_boundary(x, x_small, y, y_small_)
 
         if align_corner:
             H = int(y_small.shape[-2]//2)

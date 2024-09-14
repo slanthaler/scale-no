@@ -2,7 +2,7 @@ import sys
 import wandb
 import argparse
 
-sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
+# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
 
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
 from symmetry_no.config_helper import ReadConfig

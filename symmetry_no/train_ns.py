@@ -2,14 +2,14 @@ import sys
 import wandb
 import argparse
 
-# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
+sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
 
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
 from symmetry_no.config_helper import ReadConfig
 from symmetry_no.wandb_utilities import *
 from symmetry_no.models.fno2d import *
 from symmetry_no.models.fno2d_doubled import *
-from symmetry_no.models.fno_u_sub import *
+from symmetry_no.models.fno_u import *
 from symmetry_no.models.fno_re import *
 from symmetry_no.models.CNO import CNO
 from symmetry_no.models.unet import UNet2d

@@ -24,7 +24,7 @@ def compl_mul2d(a, b):
 
 # f domain, multiplies modes by a weight matrix
 class R_trans(nn.Module):
-    def __init__(self, c_in, c_out, modes1, modes2, mlp=False, act=True): 
+    def __init__(self, c_in, c_out, modes1, modes2, mlp=False, act=True):
         super(R_trans, self).__init__()
 
         self.c_in = int(c_in)
@@ -86,7 +86,7 @@ class R_transformations(nn.Module):
             self.channelexp.append(nn.ModuleList([
                 R_trans(width_list[i-1], width_list[i], modes1_list[i], modes2_list[i], mlp),
                 # R_trans(width_list[i], width_list[i], modes1_list[i], modes2_list[i], mlp),
-                R_trans(width_list[i], width_list[i-1], modes1_list[i], modes2_list[i], mlp, act=False), ]),)
+                R_trans(width_list[i], width_list[i-1], modes1_list[i], modes2_list[i], mlp, ), ]),)
 
 
     def down_block(self, i, x1, skip_in, m1, m2):
@@ -184,7 +184,7 @@ class R_transformations(nn.Module):
         k = k.reshape(1, 2, S1, modes2 + 1)
 
         # feature embedding
-        pow = 2*torch.arange(start=-self.n_feature, end=self.n_feature, step=2, device=device).reshape(self.n_feature, 1, 1, 1) /self.n_feature
+        pow = torch.arange(start=-self.n_feature, end=self.n_feature, step=2, device=device).reshape(self.n_feature, 1, 1, 1) /self.n_feature
         k_mat = torch.pow(k, pow)
         k_mat[:, 0, 0, :] = 0
         k_mat[:, 1, :, 0] = 0
@@ -213,7 +213,7 @@ class MLP(nn.Module):
         return x
 
 class FNO_U(nn.Module):
-    def __init__(self, modes1_list, modes2_list, width_list, level, mlp, depth=3, in_channel=9, out_channel=1, n_feature=7, boundary=False):
+    def __init__(self, modes1_list, modes2_list, width_list, level, mlp, depth=3, in_channel=9, out_channel=1, n_feature=16, boundary=False):
         super(FNO_U, self).__init__()
 
         """

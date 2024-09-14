@@ -236,7 +236,6 @@ class FNO_U(nn.Module):
         self.width = width_list[0]
         self.level = level
         self.depth = depth
-        self.pad = 8 # 1/1, 1/2, 1/4, 1/8
         self.n_feature = n_feature
         self.size = 128
         self.boundary = boundary
