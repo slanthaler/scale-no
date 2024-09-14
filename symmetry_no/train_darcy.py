@@ -14,6 +14,7 @@ from symmetry_no.models.fno_re import *
 from symmetry_no.models.unet import UNet2d
 from symmetry_no.selfconsistency import LossSelfconsistency
 from symmetry_no.super_sample import sample_Darcy
+from symmetry_no.data_augmentation import RandomFlip
 
 def main(config):
     #
@@ -57,8 +58,8 @@ def main(config):
     depth = config.depth
     modes = config.modes
 
-    model = FNO2d(modes, modes, width, depth, in_channel=in_channel, boundary=True).to(device)
-    # model = FNO2d_doubled(modes, modes, width, depth).to(device)
+    # model = FNO2d(modes, modes, width, depth, in_channel=in_channel, boundary=True).to(device)
+    model = FNO2d_doubled(modes, modes, width, depth).to(device)
 
     batch_size = config.batch_size
     epochs = config.epochs
@@ -80,6 +81,7 @@ def main(config):
 
     loss_fn = LpLoss(size_average=False)
     loss_mse = nn.MSELoss(reduction='sum')
+    group_action = RandomFlip()
     for epoch in range(0, epochs + 1):  # config.epochs
         #
         model.train()
@@ -92,43 +94,31 @@ def main(config):
         for d in data.train_loader:
             x, y = d['train']
             x, y = x.to(device), y.to(device)
+            # x, y = group_action(x, y)
 
             # supervised training
             optimizer.zero_grad()
             out = model(x)
             # DO WE NEED TO NORMALIZE THE OUTPUT??
 
-            loss = loss_fn(out.view(batch_size, -1), y.view(batch_size, -1))
+            loss = loss_fn(out.reshape(batch_size, -1), y.reshape(batch_size, -1))
             train_l2 += loss.item()
 
             # augmentation via sub-sampling
             for j in range(augmentation_samples):
                 if use_augmentation:
-                    loss_aug = LossSelfconsistency(model, x, loss_fn, y=y)
+                    loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, group_action=group_action)
                     loss += 1.0 * loss_aug
                     train_aug += loss_aug.item()
 
                 if sample_virtual_instance and (epoch >= start_selfcon):
-                    rate = torch.pow(2, 2*torch.rand(1, device=device)-1).item()
+                    rate = torch.rand(1) * 3 + 1
                     new_x, rate = sample_Darcy(input=x, rate=rate, keepsize=True)
                     loss_sc = LossSelfconsistency(model, new_x, loss_fn)
-                    loss += 0.25 * loss_sc
+                    loss += 0.25 * loss_sc * (epoch / epochs)
                     train_sc += loss_sc.item()
 
-            # # unsupervised training (selfconsistency constraint)
-            # if data.selfcon and (track_selfcon or epoch >= start_selfcon):
-            #     x_sc = d['selfcon'][0]
-            #     x_sc = x_sc.to(device)
-            #     #
-            #     # loss_sc = LossSelfconsistency(model,x_sc,loss_fn)
-            #     loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
-            #     if epoch >= start_selfcon:
-            #         loss += 0.1 * loss_sc
-            #     train_sc += loss_sc.item()
-
-            #
             loss.backward()
-
             optimizer.step()
             scheduler.step()
 

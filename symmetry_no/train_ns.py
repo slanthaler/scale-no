@@ -9,12 +9,13 @@ from symmetry_no.config_helper import ReadConfig
 from symmetry_no.wandb_utilities import *
 from symmetry_no.models.fno2d import *
 from symmetry_no.models.fno2d_doubled import *
-from symmetry_no.models.fno_u import *
+from symmetry_no.models.fno_u_sub import *
 from symmetry_no.models.fno_re import *
 from symmetry_no.models.CNO import CNO
 from symmetry_no.models.unet import UNet2d
 from symmetry_no.selfconsistency import LossSelfconsistency
 from symmetry_no.super_sample import sample_NS
+from symmetry_no.data_augmentation import RandomFlip
 
 def main(config):
     #
@@ -64,7 +65,7 @@ def main(config):
     modes = modes1
     modes_list = []
     width_list = []
-    for i in range(10):
+    for i in range(5):
         n = 2**i
         modes_list.append(modes//n)
         width_list.append(n*width)
@@ -105,6 +106,9 @@ def main(config):
         wandb.watch(model, log_freq=20, log="all")
 
     loss_fn = LpLoss(size_average=False)
+    ExtractBD = lambda x, y: x
+    group_action = RandomFlip(ExtractBC=ExtractBD)
+
     for epoch in range(0, epochs + 1):  # config.epochs
         #
         model.train()
@@ -117,7 +121,8 @@ def main(config):
         for d in data.train_loader:
             x, y, re = d['train']
             x, y, re = x.to(device), y.to(device), re.to(device)
-            # y = y - x[:,-1:] # learn the residual
+            # x, y = group_action(x, y)
+            # y = y - x[:,-1] # learn the residual
 
             # supervised training
             optimizer.zero_grad()
@@ -136,9 +141,10 @@ def main(config):
 
                 if sample_virtual_instance and (epoch >= start_selfcon):
                     rate = torch.pow(2, 3*(epoch/epochs)*torch.rand(1, device=device, requires_grad=False))
-                    new_x, rate = sample_NS(input=x, rate=rate, keepsize=config.keepsize, sample_type=config.sample_type)
+                    # new_x, rate = sample_NS(input=x, rate=rate, keepsize=config.keepsize, sample_type=config.sample_type)
+                    new_x = x
                     new_re = re * rate
-                    loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re, rate=rate.item(), type=config.dataset)
+                    loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re, type=config.dataset)
                     # loss_sc = torch.clamp(loss_sc, max=batch_size*0.2) # discard bad virtual instances
                     loss += 0.25 * loss_sc
                     train_sc += loss_sc.item()
@@ -170,7 +176,7 @@ def main(config):
 
         t2 = default_timer()
         if args.wandb:
-            wandb.log({'time': t2 - t1, 'train_l2': train_l2, 'train_selfcon': train_sc})
+            wandb.log({'time': t2 - t1, 'train_l2': train_l2, 'train_aug': train_aug})
             wandb.log({f"test_l2/loss-{ii}": loss for ii, loss in enumerate(test_l2)})
         test_losses = " / ".join([f"{val:.5f}" for val in test_l2])
         print(
@@ -179,8 +185,8 @@ def main(config):
 
     #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
     if args.wandb:
-        torch.save(model.state_dict(), "model.h5")
-    wandb.save('model.h5')
+        torch.save(model.state_dict(), "NS_model.h5")
+    wandb.save('NS_model.h5')
 
 
 #
@@ -191,7 +197,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='ns_ufno_sc',
+                        default='ns_ufno_aug',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,
@@ -201,6 +207,7 @@ if __name__ == '__main__':
 
     # set wandb to false if nowandb is set
     args.wandb = not args.nowandb
+    # args.wandb = False
 
     # read the config file
     config = ReadConfig(args.name, args.config)

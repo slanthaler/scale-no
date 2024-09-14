@@ -27,15 +27,15 @@ def DefaultConfig():
     #
     config = dict(
         name='default',
-        seed=42,
+        seed=0,
         # fno2d
         modes=12,
         width=16,
-        depth=4,
+        # depth=4,
         # training
         epochs=200,
         epochs_selfcon=50,
-        learning_rate=1e-4,
+        learning_rate=1e-3,
         weight_decay=1e-4,
         batch_size=32,
         use_augmentation=dict(
@@ -44,7 +44,7 @@ def DefaultConfig():
                         'size_min': 32},
             Flip={'p': 0.5}
         ),
-        grid_size=128,
+        grid_size=None,
         n_train=16,
         n_test=8,
         # datasets

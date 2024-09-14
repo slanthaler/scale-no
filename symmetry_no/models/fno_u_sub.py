@@ -24,7 +24,7 @@ def compl_mul2d(a, b):
 
 # f domain, multiplies modes by a weight matrix
 class R_trans(nn.Module):
-    def __init__(self, c_in, c_out, modes1, modes2, mlp=False, act=True): 
+    def __init__(self, c_in, c_out, modes1, modes2, mlp=False, act=True): # TODO: double check this
         super(R_trans, self).__init__()
 
         self.c_in = int(c_in)
@@ -59,6 +59,8 @@ class R_trans(nn.Module):
             x = compl_mul2d(x, weights)
 
         if self.act:
+            # x_real = self.norm_real(x.real)
+            # x_imag = self.norm_imag(x.imag)
             x = F.gelu(x.real) + 1j * F.gelu(x.imag)
             # x = torch.tanh(x.abs()) * (x / (x.abs() + self.eps))
         return x
@@ -75,19 +77,77 @@ class R_transformations(nn.Module):
         self.n_feature = n_feature
         self.features = 3*self.n_feature
         self.sparsity_threshold = 0.05
-
         self.channelexp = nn.ModuleList([
             nn.ModuleList([R_trans(width_list[0], width_list[0], modes1_list[0], modes2_list[0], mlp=True), ]),
         ])
-        self.p0 = MLP(self.features, width_list[0], width_list[0], dtype=torch.float)  # k_mat + Re
-        # self.p1 = MLP(self.features, width_list[0], width_list[0], dtype=torch.float)  # k_mat + Re
+        self.p = MLP(self.features, width_list[0], width_list[0], dtype=torch.float)  # k_mat + Re
+        # self.q = R_trans(width_list[0], width_list[0], modes1_list[0], modes2_list[0], mlp=True)
 
         for i in range(1,self.level):
             self.channelexp.append(nn.ModuleList([
                 R_trans(width_list[i-1], width_list[i], modes1_list[i], modes2_list[i], mlp),
                 # R_trans(width_list[i], width_list[i], modes1_list[i], modes2_list[i], mlp),
-                R_trans(width_list[i], width_list[i-1], modes1_list[i], modes2_list[i], mlp, act=False), ]),)
+                R_trans(width_list[i], width_list[i-1], modes1_list[i], modes2_list[i], mlp), ]),)
 
+    def forward(self, x, Re, S1, S2, skip_in=None):
+        # adaptive modes
+        batchsize = x.shape[0]
+        M1, M2 = S1//2, S2//2 + 1
+        modes1_list = self.modes1_list
+        modes2_list = self.modes2_list
+
+        # first level is mlp
+        modes1_list[0] = M1
+        modes2_list[0] = M2
+        # in tensor implementation, if input is larger than weight, set the mode_list with the weight
+        if not self.mlp:
+            for l in range(0, self.level):
+                if M1 < self.modes1_list[l]:
+                    modes1_list[l] = M1
+                if M2 < self.modes1_list[l]:
+                    modes2_list[l] = M2
+
+        # if the x is larger than weight, truncate x
+        # if x.shape[-2] > modes1_list[0]*2 or x.shape[-1] > modes2_list[0]+1:
+        #     x = torch.cat((x[:, :, :modes1_list[0], :modes2_list[0]], x[:, :, -modes1_list[0]:, :modes2_list[0]]), dim=-2)  # (width, mode/2)
+        #     K_features = torch.cat((K_features[:, :, :modes1_list[0], :modes2_list[0]], K_features[:, :, -modes1_list[0]:, :modes2_list[0]]), dim=-2)
+
+        if skip_in == None:
+            skip_in = self.init_skip_in(x, modes1_list, modes2_list)
+
+        # add wavenumber k_mat
+        k_mat = self.get_k(batchsize, S1, S2, device=x.device)
+        re_mat = self.embed_re(Re, S1, S2)
+        re_feature = self.p(torch.cat([k_mat, re_mat], dim=1))
+        x = x * re_feature
+        x = x * (x.abs() > self.sparsity_threshold)
+
+        # down
+        x1 = (x + skip_in[0])
+        x1 = self.channelexp[0][0](x1)  # (width, mode)
+
+        x = [x1,]
+        skip_out = [x1,]
+
+        for i in range(1,self.level):
+            x1 = self.down_block(i, x1, skip_in[i], modes1_list[i], modes2_list[i])
+            x.append(x1)
+            skip_out.append(x1)
+
+        # up
+        for i in range(self.level-1, 0, -1):
+            x[i] = self.channelexp[i][-1](x[i])  # (width*2, mode/4)
+            x[i-1] = self.up_add_corner(x[i], x[i-1], modes1_list[i], modes2_list[i])  # (width*2, mode/2)
+
+        x = x[0]  # (width, mode)
+        return x, skip_out
+
+    def init_skip_in(self, x, modes1_list, modes2_list):
+        skip = []
+        skip.append(torch.ones(x.shape[0], self.width_list[0], x.shape[2], x.shape[3], dtype=torch.cfloat, device=x.device))
+        for i in range(1, self.level):
+            skip.append(torch.ones(x.shape[0], self.width_list[i], modes1_list[i]*2, modes2_list[i], dtype=torch.cfloat, device=x.device))
+        return skip
 
     def down_block(self, i, x1, skip_in, m1, m2):
         """
@@ -110,66 +170,6 @@ class R_transformations(nn.Module):
         x1[:, :, -m1:, :m2] = (x1[:, :, -m1:, :m2] + x2[:, :, -m1:, :m2])
         return x1
 
-    def forward(self, x, Re, S1, S2, skip_in=None):
-        # adaptive modes
-        batchsize = x.shape[0]
-        M1, M2 = S1//2, S2//2 + 1
-        modes1_list = self.modes1_list
-        modes2_list = self.modes2_list
-
-        # first level is mlp
-        modes1_list[0] = M1
-        modes2_list[0] = M2
-        # If input is larger than weight, set the mode_list with the weight
-        # if not self.mlp:
-        for l in range(0, self.level):
-            if M1 < self.modes1_list[l]:
-                modes1_list[l] = M1
-            if M2 < self.modes1_list[l]:
-                modes2_list[l] = M2
-
-        # if the x is larger than weight, truncate x
-        # if x.shape[-2] > modes1_list[0]*2 or x.shape[-1] > modes2_list[0]+1:
-        #     x = torch.cat((x[:, :, :modes1_list[0], :modes2_list[0]], x[:, :, -modes1_list[0]:, :modes2_list[0]]), dim=-2)  # (width, mode/2)
-        #     K_features = torch.cat((K_features[:, :, :modes1_list[0], :modes2_list[0]], K_features[:, :, -modes1_list[0]:, :modes2_list[0]]), dim=-2)
-
-        if skip_in == None:
-            skip_in = self.init_skip_in(x, modes1_list, modes2_list)
-
-        # add wavenumber k_mat
-        k_mat = self.get_k(batchsize, S1, S2, device=x.device)
-        re_mat = self.embed_re(Re, S1, S2)
-        re_weight = self.p0(torch.cat([k_mat, re_mat], dim=1))
-        x = x * re_weight
-        # x = x * (x.abs() > self.sparsity_threshold)
-
-        # first MLP
-        x1 = (x + skip_in[0])
-        x1 = self.channelexp[0][0](x1)  # (width, mode)
-
-        x = [x1,]
-        skip_out = [x1,]
-        # down
-        for i in range(1, self.level):
-            x1 = self.down_block(i, x1, skip_in[i], modes1_list[i], modes2_list[i])
-            x.append(x1)
-            skip_out.append(x1)
-
-        # up
-        for i in range(self.level-1, 0, -1):
-            x[i] = self.channelexp[i][-1](x[i])  # (width*2, mode/4)
-            x[i-1] = self.up_add_corner(x[i], x[i-1], modes1_list[i], modes2_list[i])  # (width*2, mode/2)
-
-        x = x[0]  # (width, mode)
-        return x, skip_out
-
-    def init_skip_in(self, x, modes1_list, modes2_list):
-        skip = [x, ]
-        # skip.append(torch.ones(x.shape[0], self.width_list[0], x.shape[2], x.shape[3], dtype=torch.cfloat, device=x.device))
-        for i in range(1, self.level):
-            skip.append(torch.ones(x.shape[0], self.width_list[i], modes1_list[i]*2, modes2_list[i], dtype=torch.cfloat, device=x.device))
-        return skip
-
     def get_k(self, batchsize, S1, S2, device):
         # print("computing k")
         modes1, modes2 = S1 // 2, S2 // 2
@@ -184,16 +184,15 @@ class R_transformations(nn.Module):
         k = k.reshape(1, 2, S1, modes2 + 1)
 
         # feature embedding
-        pow = 2*torch.arange(start=-self.n_feature, end=self.n_feature, step=2, device=device).reshape(self.n_feature, 1, 1, 1) /self.n_feature
+        pow = torch.arange(start=1, end=self.n_feature+1, step=1, device=device).reshape(self.n_feature, 1, 1, 1) /self.n_feature
         k_mat = torch.pow(k, pow)
         k_mat[:, 0, 0, :] = 0
         k_mat[:, 1, :, 0] = 0
         k_mat = k_mat.reshape(1, 2*self.n_feature, S1, modes2 + 1).repeat(batchsize, 1,1,1)
-        k_mat.requires_grad = False
         return k_mat
 
     def embed_re(self, re, S1, S2):
-        pow = torch.arange(start=-self.n_feature, end=self.n_feature, step=2, device=re.device).reshape(1, self.n_feature, 1, 1) /self.n_feature
+        pow = torch.arange(start=1, end=self.n_feature+1, step=1, device=re.device).reshape(1, self.n_feature, 1, 1) /self.n_feature
         re_mat = torch.pow(re, pow).repeat(1,1, S1, S2 // 2 +1)
         return re_mat
 
@@ -212,8 +211,9 @@ class MLP(nn.Module):
         x = self.mlp2(x)
         return x
 
+
 class FNO_U(nn.Module):
-    def __init__(self, modes1_list, modes2_list, width_list, level, mlp, depth=3, in_channel=9, out_channel=1, n_feature=7, boundary=False):
+    def __init__(self, modes1_list, modes2_list, width_list, level, mlp, depth=3, in_channel=9, out_channel=1, n_feature=5, boundary=False):
         super(FNO_U, self).__init__()
 
         """
@@ -241,7 +241,7 @@ class FNO_U(nn.Module):
         self.size = 128
         self.boundary = boundary
 
-        self.p = MLP(self.in_c, self.width, self.width) # input channel is 3: (a(x, y), x, y)
+        self.p = MLP(self.in_c, self.width, 2*self.width) # input channel is 3: (a(x, y), x, y)
 
         self.R = nn.ModuleList([])
         self.mlp = nn.ModuleList([])
@@ -251,7 +251,6 @@ class FNO_U(nn.Module):
         for l in range(self.depth):
             self.R.append(R_transformations(self.width_list, self.modes1_list, self.modes2_list, level, mlp, self.n_feature))
             self.mlp.append(MLP(self.width, self.width, self.width))
-            # self.mlp.append(Local(self.width, self.width, self.width, in_shape=self.modes1_list[0]*2))
             self.w.append(nn.Conv2d(self.width, self.width, 1))
             self.norm1.append(nn.GroupNorm(1, self.width))
             self.norm2.append(nn.GroupNorm(1, self.width))
@@ -280,13 +279,14 @@ class FNO_U(nn.Module):
         for i in range(self.depth):
             x1 = self.w[i](x)
             x = self.norm1[i](x)
-            x_ft = torch.fft.rfft2(x, dim=[2,3], norm="backward")
+            x_ft = torch.fft.rfft2(x, dim=[2,3], norm="forward")
             x_ft, skip = self.R[i](x_ft, re, S1, S2, skip)
-            x = torch.fft.irfftn(x_ft, s=(S1, S2), norm="backward")
+            x = torch.fft.irfftn(x_ft, s=(S1, S2), norm="forward")
             x = self.norm2[i](x)
             x2 = self.mlp[i](x)
             x = x1 + x2
-            x = F.gelu(x)
+            if i != self.depth-1:
+                x = F.gelu(x)
 
         x = self.q(x)
 

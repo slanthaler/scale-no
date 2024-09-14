@@ -100,17 +100,19 @@ def sample_Darcy(rate, input=None, alpha_a=0.5, alpha_g=1, sigma_g=1, keepsize=F
 
     return new_input, rate
 
-def sample_helm(rate, input, alpha_a=1.5, alpha_g=3.5, tau=2, keepsize=False):
+def sample_helm(rate, input, output, alpha_a=1.5, alpha_g=3.5, tau=2, keepsize=False):
     device = input.device
     N = input.shape[0]
-    size_input = input.shape[2]
-    size = math.floor(size_input * rate) //2 *2
-    rate = size/size_input
-    repeat = math.ceil(size / size_input)
+    size = input.shape[2]
+    # size = math.floor(size_input * rate) //2 *2
+    # rate = size/size_input
+    # repeat = math.ceil(size / size_input)
 
     a_GRF = GaussianRF(dim=2, size=size, alpha=alpha_a, tau=tau, device=device)
     a = a_GRF.sample(N).real
-    a = 1 + 0.5*11*(1 + torch.tanh(a*100))
+    # a = 1 + 0.5*11*(1 + torch.tanh(a*100))
+    a = torch.exp(a/5)
+    a = a / torch.std(a) * torch.std(input[:, 0])
     g_GRF = GaussianRF(dim=2, size=size, alpha=alpha_g, tau=tau, device=device)
     g = g_GRF.sample(N).to(device)
     g = torch.view_as_real(g).permute(0, 3, 1, 2)
@@ -119,25 +121,38 @@ def sample_helm(rate, input, alpha_a=1.5, alpha_g=3.5, tau=2, keepsize=False):
 
     # For Helmholtz we repeat the input for larger size
     # input = input.repeat(1, 1, repeat, repeat)[:, :, :size, :size]
-    while input.shape[-1] < size:
-        input = torch.cat([input, input.flip(-2)], dim=-2)
-        input = torch.cat([input, input.flip(-1)], dim=-1)
-    input = input[..., :size, :size]
+    # input = input.clone()
+    # input = torch.cat([input, input.flip(-2), input], dim=-2)
+    # input = torch.cat([input, input.flip(-1), input], dim=-1)
+    # input = input[..., :size, :size]
 
-    x = torch.zeros(N, 9, size, size, dtype=torch.float32, device=device)
-    x[:, 0] = a
-    new_input = HelmholtzExtractBC(x, g)
-    new_input[:, 1:] = input[:, 1:] + new_input[:, 1:]
+    # while input.shape[-1] < size:
+    # input = input[..., ::2, ::2]
+    # input = torch.cat([input, input.flip(-2)], dim=-2)
+    # new_input = torch.cat([input, input.flip(-1)], dim=-1)
+    # output = output[..., ::2, ::2]
+    # output = torch.cat([output, output.flip(-2)], dim=-2)
+    # new_output = torch.cat([output, output.flip(-1)], dim=-1)
+    # new_input = input[..., :size, :size]
+    # new_output = output[..., :size, :size]
 
-    if keepsize:
-        # new_input = torch.nn.functional.interpolate(new_input,
-        #                                 size=(size_input, size_input),
-        #                                 mode='bilinear',
-        #                                 align_corners=True)
-        sub = max(repeat-1, 1)
-        new_input = new_input[..., ::sub, ::sub][:, :, :size_input, :size_input]
+    input[:, 0] = input[:, 0] + a
+    output = output + g
 
-    return new_input.to(device), rate
+    # if keepsize:
+    #     new_input = torch.nn.functional.interpolate(new_input,
+    #                                     size=(size_input, size_input),
+    #                                     mode='bilinear',
+    #                                     align_corners=True)
+    #     new_output = torch.nn.functional.interpolate(new_output,
+    #                                     size=(size_input, size_input),
+    #                                     mode='bilinear',
+    #                                     align_corners=True)
+
+
+    new_input = HelmholtzExtractBC(input, output)
+
+    return new_input.to(device), rate, output.to(device)
 
 
 def sample_NS(rate, input, alpha_a=2, alpha_g=2, tau=2, sample_type="interp", keepsize=False, maxsize=256):
@@ -183,3 +198,8 @@ def sample_NS(rate, input, alpha_a=2, alpha_g=2, tau=2, sample_type="interp", ke
 
     new_input = input + a
     return new_input, rate
+
+def sample_Burgers(rate, input=None, alpha_a=0.5, alpha_g=1, sigma_g=1, keepsize=False):
+
+
+    return input, rate

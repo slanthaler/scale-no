@@ -80,12 +80,11 @@ def main(config):
     elif config.model == "FNO_u":
         model = FNO_U(modes_list, modes_list, width_list, level=config.level, depth=depth, mlp=mlp, in_channel=in_channel, out_channel=out_channel, boundary=True).to(device)
     elif config.model == "FNO_re":
-        model = FNO_mlp(width, modes1, modes2, depth, mlp=mlp, in_channel=in_channel, out_channel=out_channel, sub=0, grid_feature=True, boundary=True).to(device)
+        model = FNO_mlp(width, modes1, modes2, depth, mlp=mlp, in_channel=in_channel, out_channel=out_channel, boundary=True).to(device)
     else:
         raise NotImplementedError("model not implement")
     print('FNO2d parameter count: ', count_params(model))
-
-    model.load_state_dict(torch.load("helm_model_refno.h5"))
+    model.load_state_dict(torch.load("helm_model_ufno.h5"))
 
     #
     batch_size = config.batch_size
@@ -132,24 +131,34 @@ def main(config):
                 # augmentation via sub-sampling
                 for j in range(augmentation_samples):
                     if augmentation_loss:
-                        loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re, size_min=16, type="helmholtz")
+                        rate = 2
+                        loss_aug = LossSelfconsistency(model, x, loss_fn, rate=rate, y=y, re=re, type="helmholtz", plot=True)
                         loss += augmentation_loss * loss_aug
                         train_aug += loss_aug.item()
 
                     if sample_virtual_instance and (epoch >= start_selfcon):
-                        # rate = 1 + torch.rand(1)
-                        rate = 1
-                        new_x, rate, new_y = sample_helm(input=x, output=y, rate=rate, keepsize=1)
-                        # new_x, new_y = x, y
+                        # rate = torch.rand(1) * 3 + 1
+                        rate = 2
+                        new_x, rate = sample_helm(input=x, rate=rate, keepsize=1)
                         new_re = re * rate
-                        loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re, type="helmholtz", align_corner=False)
-                        loss += 0.2 * loss_sc
+                        loss_sc = LossSelfconsistency(model, new_x, loss_fn, rate=rate, re=new_re, type="helmholtz", plot=True)
+                        loss += 0.25 * loss_sc
                         train_sc += loss_sc.item()
 
-                loss.backward()
-                optimizer.step()
-                scheduler.step()
-
+                    # # unsupervised training (selfconsistency constraint)
+                    # if data.selfcon and (track_selfcon or epoch >= start_selfcon):
+                    #     x_sc = d['selfcon'][0]
+                    #     x_sc = x_sc.to(device)
+                    #     #
+                    #     loss_sc = LossSelfconsistency(model, x_sc, loss_fn)
+                    #     if epoch >= start_selfcon:
+                    #         loss += 0.1 * loss_sc
+                    #     train_sc += loss_sc.item()
+                #
+                # loss.backward()
+                # optimizer.step()
+                # scheduler.step()
+        #
         model.eval()
         test_l2 = np.zeros((len(data.test_loaders),))
         if epoch % epoch_test == 0:
@@ -169,19 +178,10 @@ def main(config):
         test_l2 /= n_test
 
         t2 = default_timer()
-        if args.wandb:
-            wandb.log({'time': t2 - t1, 'train_l2': train_l2, 'train_selfcon': train_sc})
-            wandb.log({f"test_l2/loss-{ii}": loss for ii, loss in enumerate(test_l2)})
         test_losses = " / ".join([f"{val:.5f}" for val in test_l2])
         print(
             f'[{epoch:3}], time: {t2 - t1:.3f}, train: {train_l2:.5f}, test: {test_losses}, train_aug: {train_aug:.5f}, train_sc: {train_sc:.5f}',
             flush=True)
-
-    #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
-    # if args.wandb:
-    torch.save(model.state_dict(), "helm_model_refno_sc.h5")
-    # wandb.save('../model.h5')
-
 
 #
 if __name__ == '__main__':
@@ -191,18 +191,17 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='helmholtz_sc',
+                        default='helmholtz_eval',
                         # default='ns',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,
                         help="Specify the full config-file path.")
-    parser.add_argument('--nowandb', action='store_true')
+    parser.add_argument('--nowandb', default=True)
     args = parser.parse_args()
 
     # set wandb to false if nowandb is set
     args.wandb = not args.nowandb
-    # args.wandb = False
 
     # read the config file
     config = ReadConfig(args.name, args.config)

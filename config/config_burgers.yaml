@@ -1,0 +1,56 @@
+---
+#
+name: 'burgers'
+run_name: 'Burgers'
+dataset: 'burgers'
+
+# fno2d
+modes: 64
+width: 32
+depth: 4
+
+# training
+learning_rate: 1e-3
+weight_decay: 1e-4
+batch_size: 16
+epochs: 200
+epoch_test: 10
+
+n_train: 800
+n_test: 200
+n_selfcon: 1024
+epochs_selfcon: 50 # now epochs_selfcon is the epoch to start self-consistency loss
+grid_size: 1024
+
+truncate: 2 # truncate to sub-domain
+S: 1024
+sub_s: 2
+T: 100
+T_in: 1
+sub_t: 1
+
+# datasets
+data_dir: '/media/wumming/HHD/HHD_data/burgers'
+
+#train_data: 'burgers_v100_t100_r1024_N2048.mat'
+train_data: 'burgers_v400.mat'
+train_re: 400
+test_data: [
+#  'burgers_v100_t100_r1024_N2048.mat',
+  'burgers_v100.mat',
+  'burgers_v200.mat',
+  'burgers_v400.mat',
+  'burgers_v1000.mat',
+]
+test_re: [
+  100,
+  200,
+  400,
+  1000,
+]
+
+#
+augmentation_loss: 1
+augmentation_samples: 2
+use_augmentation:
+sample_virtual_instance: 1

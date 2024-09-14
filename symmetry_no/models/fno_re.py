@@ -33,7 +33,7 @@ class SpectralConv2d(nn.Module):
         self.modes2 = modes2
         self.sub = sub
         self.mlp = mlp
-        self.p = MLP(2*self.n_feature + self.n_feature, in_channels, in_channels, dtype=torch.cfloat)  # k_mat + Re
+        self.p = MLP(2*self.n_feature + self.n_feature, in_channels, in_channels, dtype=torch.float)  # k_mat + Re
 
         self.norm1 = nn.GroupNorm(1, in_channels)
         self.norm2 = nn.GroupNorm(1, out_channels)
@@ -62,24 +62,26 @@ class SpectralConv2d(nn.Module):
         # print("computing k")
         modes1, modes2 = S1 // 2, S2 // 2
         k_x1 = torch.cat((torch.arange(start=0, end=S1 - modes1, step=1, device=device),
-                          torch.arange(start=-(modes1), end=0, step=1, device=device)), 0).\
+                          torch.arange(start=(modes1), end=0, step=-1, device=device)), 0).\
                             reshape(S1, 1).repeat(1,S2).reshape(1, S1, S2)
         k_x2 = torch.cat((torch.arange(start=0, end=S2 - modes2, step=1, device=device),
-                          torch.arange(start=-(modes2), end=0, step=1, device=device)), 0).\
+                          torch.arange(start=(modes2), end=0, step=-1, device=device)), 0).\
                             reshape(1, S2).repeat(S1,1).reshape(1, S1, S2)
 
         k = torch.cat((k_x1, k_x2), 0)[..., :modes2 + 1]
         k = k.reshape(1, 2, S1, modes2 + 1)
 
         # feature embedding
-        pow = torch.arange(start=1, end=self.n_feature+1, device=device).reshape(self.n_feature, 1, 1, 1) /self.n_feature
-        k_mat = torch.pow(k.cfloat(), pow)
+        pow = 2*torch.arange(start=-self.n_feature, end=self.n_feature, step=2, device=device).reshape(self.n_feature, 1, 1, 1) /self.n_feature
+        k_mat = torch.pow(k, pow)
+        k_mat[:, 0, 0, :] = 0
+        k_mat[:, 1, :, 0] = 0
         k_mat = k_mat.reshape(1, 2*self.n_feature, S1, modes2 + 1).repeat(batchsize, 1,1,1)
         k_mat.requires_grad = False
         return k_mat
 
     def embed_re(self, re, S1, S2):
-        pow = torch.arange(start=1, end=self.n_feature+1, device=re.device).reshape(1, self.n_feature, 1, 1) /self.n_feature
+        pow = torch.arange(start=-self.n_feature, end=self.n_feature, step=2, device=re.device).reshape(1, self.n_feature, 1, 1) /self.n_feature
         re_mat = torch.pow(re, pow).repeat(1,1, S1, S2 // 2 +1)
         return re_mat
 
@@ -95,12 +97,13 @@ class SpectralConv2d(nn.Module):
         S1, S2 = x.shape[-2], x.shape[-1]
 
         #Compute Fourier coeffcients up to factor of e^(- something constant)
-        x_ft = torch.fft.rfft2(x, norm="forward")
+        x_ft = torch.fft.rfft2(x, norm="backward")
 
         # add wavenumber k_mat
         k_mat = self.get_k(batchsize, S1, S2, device=x.device)
         re_mat = self.embed_re(Re, S1, S2)
         feature = self.p(torch.cat([k_mat, re_mat], dim=1))
+
         x_ft = x_ft * feature
 
         if self.mlp:
@@ -124,7 +127,7 @@ class SpectralConv2d(nn.Module):
             out_ft[:, :, -m1:, :m2] = self.compl_mul2d(x_ft[:, :, -m1:, :m2], self.weights4[..., -m1:, :m2])
 
         #Return to physical space
-        x = torch.fft.irfft2(out_ft, s=(S1, S2), norm="forward")
+        x = torch.fft.irfft2(out_ft, s=(S1, S2), norm="backward")
 
         if self.sub > 0:
             x = x[:,:,:Nx,:Ny]
@@ -148,26 +151,9 @@ class MLP(nn.Module):
         x = self.mlp2(x)
         return x
 
-class MLP_complex(nn.Module):
-    def __init__(self, in_channels, out_channels, mid_channels):
-        super(MLP_complex, self).__init__()
-        self.out_channels = out_channels
-        self.mlp1 = nn.Conv2d(in_channels*2, mid_channels*2, 1)
-        self.mlp2 = nn.Conv2d(mid_channels*2, out_channels*2, 1)
-
-    def forward(self, x):
-        shape = x.shape
-        x = torch.view_as_real(x)
-        x = x.permute(0,4,1,2,3).flatten(1,2)
-        x = self.mlp1(x)
-        x = F.gelu(x)
-        x = self.mlp2(x)
-        x = x.reshape(shape[0], 2, self.out_channels, shape[-2], shape[-1]).permute(0,2,3,4,1)
-        x = torch.view_as_complex(x.contiguous())
-        return x
-
 class FNO_mlp(nn.Module):
-    def __init__(self, width, modes1=0, modes2=0, depth=4, in_channel=7, out_channel=1, sub=0, boundary=False, mlp=False):
+    def __init__(self, width, modes1=0, modes2=0, depth=4, in_channel=7,
+                 out_channel=1, sub=4, boundary=False, mlp=False, grid_feature=False):
         super(FNO_mlp, self).__init__()
 
         """
@@ -187,14 +173,15 @@ class FNO_mlp(nn.Module):
         self.depth = depth
         self.in_channel = in_channel + 2
         self.out_channel = out_channel
-        self.n_feature = 3
+        self.n_feature = 5
         self.sub = sub
         self.boundary = boundary
-        self.pow = torch.arange(start=0, end=self.n_feature).reshape(1, self.n_feature, 1, 1) / (self.n_feature - 1)
+        self.grid_feature = grid_feature
+        self.pow = torch.arange(start=-self.n_feature, end=self.n_feature, step=2).reshape(1, self.n_feature, 1, 1) / (self.n_feature - 1)
 
         #self.p = nn.Linear(self.in_channel, self.width) # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
-        # self.p = MLP(self.in_channel+1, self.width, self.width)
         self.p = MLP(self.in_channel, self.width, self.width)
+        self.p_re = MLP(4 * self.n_feature, self.width, self.width)
         self.encode_re1 = nn.Linear(1, self.width)
         self.encode_re2 = nn.Linear(self.width, 1)
 
@@ -231,6 +218,9 @@ class FNO_mlp(nn.Module):
         x = torch.cat((x, grid), dim=1) # 1 is the channel dimension
         x = self.p(x)
 
+        if self.grid_feature:
+         x = x + self.p_re(grid_re)
+
         for i in range(self.depth):
             x1 = self.conv[i](x, re)
             x1 = self.mlp[i](x1)
@@ -239,7 +229,6 @@ class FNO_mlp(nn.Module):
             x = F.gelu(x)
 
         x = self.q(x)
-
         if self.boundary:
             x = x*std
             del std

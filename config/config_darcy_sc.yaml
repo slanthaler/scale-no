@@ -12,7 +12,7 @@ depth: 4
 # training
 learning_rate: 1e-3
 weight_decay: 1e-4
-batch_size: 16
+batch_size: 8
 epochs: 200
 epoch_test: 10
 
@@ -20,11 +20,11 @@ n_train: 1024
 n_test: 128
 n_selfcon: 1024
 epochs_selfcon: 50 # now epochs_selfcon is the epoch to start self-consistency loss
-#grid_size: 128
+grid_size: 128
 
 # datasets
-#data_dir: '/media/wumming/HHD/HHD_data/darcy/'
-data_dir: '/central/groups/astuart/slanth/SymmetryNO/symmetry-no/data'
+data_dir: '/media/wumming/HHD/HHD_data/darcy'
+#data_dir: '/central/groups/astuart/slanth/SymmetryNO/symmetry-no/data'
 
 #train_data: 'darcy_BC_tanh_amin1.0_amax12.0_Nsamp1024_Ns128_alphacoeff1.50_alphag3.50.mat'
 #test_data: 'darcy_test_BC_tanh_amin1.0_amax12.0_Nsamp256_Ns128_alphacoeff1.50_alphag3.50.mat'
@@ -45,6 +45,6 @@ selfcon_data:
 
 #
 augmentation_loss: 1
-augmentation_samples: 3
+augmentation_samples: 2
 use_augmentation:
 sample_virtual_instance: 1
