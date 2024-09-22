@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 from symmetry_no.data_augmentation import RandomCropResize, RandomCropResizeTime, RandomCropResizeTimeAR
 from symmetry_no.darcy_utilities import DarcyExtractBC
 from symmetry_no.helmholtz_utilities import HelmholtzExtractBC
