@@ -184,9 +184,9 @@ def main(config):
             flush=True)
 
     #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
-    if args.wandb:
-        torch.save(model.state_dict(), "NS_model.h5")
-    wandb.save('NS_model.h5')
+    # if args.wandb:
+    #     torch.save(model.state_dict(), "NS_model.h5")
+    # wandb.save('NS_model.h5')
 
 
 #
@@ -197,7 +197,6 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='ns_ufno_aug',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,
