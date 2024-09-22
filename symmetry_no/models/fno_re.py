@@ -19,7 +19,9 @@ np.random.seed(0)
 # fourier layer
 ################################################################
 class SpectralConv2d(nn.Module):
-    def __init__(self, in_channels, out_channels, hidden_channels, modes1, modes2, n_feature=5, sub=0, mlp=False):
+    def __init__(self, in_channels, out_channels, hidden_channels, modes1, modes2,
+                 scale_informed=True, frequency_pos_emb=True,
+                 n_feature=5, sub=0, mlp=False):
         super(SpectralConv2d, self).__init__()
 
         """
@@ -31,9 +33,22 @@ class SpectralConv2d(nn.Module):
         self.out_channels = out_channels
         self.modes1 = modes1
         self.modes2 = modes2
+
+        self.scale_informed = scale_informed
+        self.frequency_pos_emb = frequency_pos_emb
+
         self.sub = sub
         self.mlp = mlp
-        self.p = MLP(2*self.n_feature + self.n_feature, in_channels, in_channels, dtype=torch.float)  # k_mat + Re
+        if self.frequency_pos_emb and self.scale_informed:
+            embedding_feature = 3 * self.n_feature
+        elif self.frequency_pos_emb and not self.scale_informed:
+            embedding_feature = 2 * self.n_feature
+        elif not self.frequency_pos_emb and self.scale_informed:
+            embedding_feature = 1 * self.n_feature
+        else:
+            embedding_feature = 0
+
+        self.p = MLP(embedding_feature, in_channels, in_channels, dtype=torch.float)  # k_mat (2* feature) + Re (feature)
 
         self.norm1 = nn.GroupNorm(1, in_channels)
         self.norm2 = nn.GroupNorm(1, out_channels)
@@ -100,11 +115,21 @@ class SpectralConv2d(nn.Module):
         x_ft = torch.fft.rfft2(x, norm="backward")
 
         # add wavenumber k_mat
-        k_mat = self.get_k(batchsize, S1, S2, device=x.device)
-        re_mat = self.embed_re(Re, S1, S2)
-        feature = self.p(torch.cat([k_mat, re_mat], dim=1))
-
-        x_ft = x_ft * feature
+        if self.frequency_pos_emb and self.scale_informed:
+            k_mat = self.get_k(batchsize, S1, S2, device=x.device)
+            re_mat = self.embed_re(Re, S1, S2)
+            feature = self.p(torch.cat([k_mat, re_mat], dim=1))
+            x_ft = x_ft * feature
+        elif self.frequency_pos_emb and not self.scale_informed:
+            k_mat = self.get_k(batchsize, S1, S2, device=x.device)
+            feature = self.p(k_mat)
+            x_ft = x_ft * feature
+        elif not self.frequency_pos_emb and self.scale_informed:
+            re_mat = self.embed_re(Re, S1, S2)
+            feature = self.p(re_mat)
+            x_ft = x_ft * feature
+        else:
+            x_ft = x_ft
 
         if self.mlp:
             # MLP layer
@@ -153,7 +178,8 @@ class MLP(nn.Module):
 
 class FNO_mlp(nn.Module):
     def __init__(self, width, modes1=0, modes2=0, depth=4, in_channel=7,
-                 out_channel=1, sub=4, boundary=False, mlp=False, grid_feature=False):
+                 scale_informed=True, frequency_pos_emb=True, grid_feature=False,
+                 out_channel=1, sub=4, boundary=False, mlp=False):
         super(FNO_mlp, self).__init__()
 
         """
@@ -173,6 +199,10 @@ class FNO_mlp(nn.Module):
         self.depth = depth
         self.in_channel = in_channel + 2
         self.out_channel = out_channel
+
+        self.scale_informed = scale_informed
+        self.frequency_pos_emb = frequency_pos_emb
+
         self.n_feature = 5
         self.sub = sub
         self.boundary = boundary
@@ -189,7 +219,9 @@ class FNO_mlp(nn.Module):
         self.mlp = []
         self.w = []
         for _ in range(depth):
-            self.conv.append(SpectralConv2d(self.width, self.width, self.width, modes1, modes2, n_feature=self.n_feature, sub=sub, mlp=mlp))
+            self.conv.append(SpectralConv2d(self.width, self.width, self.width, modes1, modes2,
+                                            scale_informed=self.scale_informed, frequency_pos_emb=self.frequency_pos_emb,
+                                            n_feature=self.n_feature, sub=sub, mlp=mlp))
             self.mlp.append(MLP(self.width, self.width, self.width))
             self.w.append(nn.Conv2d(self.width, self.width, 1))
             # self.w.append(nn.Conv2d(self.width, self.width, 3, padding="same"))
@@ -244,10 +276,14 @@ class FNO_mlp(nn.Module):
         grid = torch.cat((gridx, gridy), dim=1)
 
         # re_mat = re * self.pow.to(device)
-        re_mat = torch.pow(re, self.pow.to(device))
-        x_sin = torch.sin(re_mat * gridx * 2*np.pi)
-        x_cos = torch.cos(re_mat * gridx * 2*np.pi)
-        y_sin = torch.sin(re_mat * gridy * 2*np.pi)
-        y_cos = torch.cos(re_mat * gridy * 2*np.pi)
-        feature = torch.cat((x_sin, x_cos, y_sin, y_cos), dim=1)
-        return grid, feature
+        if self.grid_feature:
+            re_mat = torch.pow(re, self.pow.to(device))
+            x_sin = torch.sin(re_mat * gridx * 2*np.pi)
+            x_cos = torch.cos(re_mat * gridx * 2*np.pi)
+            y_sin = torch.sin(re_mat * gridy * 2*np.pi)
+            y_cos = torch.cos(re_mat * gridy * 2*np.pi)
+            grid_feature = torch.cat((x_sin, x_cos, y_sin, y_cos), dim=1)
+        else:
+            grid_feature = None
+
+        return grid, grid_feature

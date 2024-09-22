@@ -1,7 +1,7 @@
 ---
 #
 name: 'ns_b_aug_mlp'
-run_name: 'NS_boundary RE'
+run_name: 'NS RE Unet sc'
 
 dataset: 'NS'
 # fno2d
@@ -17,16 +17,17 @@ weight_decay: 1e-4
 batch_size: 10
 epochs: 101
 
-model: "FNO_u" # "UNet", "FNO", "FNO_re"
-n_train: 60
+model: "UNet" # "UNet", "FNO", "FNO_re"
+n_train: 50
 n_test: 5
 n_selfcon: 20
-epochs_selfcon: 10 # now epochs_selfcon is the epoch to start self-consistency loss
+epochs_selfcon: 1 # now epochs_selfcon is the epoch to start self-consistency loss
 epoch_test: 5
 
 truncate: 2 # truncate to sub-domain
 S: 128
-T: 300
+T: 290
+T_in: 10
 sub_s: 1
 sub_t: 1
 
@@ -58,6 +59,6 @@ selfcon_data:
 
 #
 augmentation_loss: 1
-augmentation_samples: 5
+augmentation_samples: 1
 use_augmentation:
-sample_virtual_instance: 0
+sample_virtual_instance: 1
