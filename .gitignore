@@ -11,3 +11,4 @@ symmetry-no/.png
 config/wandb_api_key.txt
 *.h5
 *.png
+*.out

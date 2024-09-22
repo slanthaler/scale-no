@@ -2,7 +2,7 @@ import sys
 import wandb
 import argparse
 
-sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
+# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
 
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
 from symmetry_no.config_helper import ReadConfig
@@ -217,6 +217,7 @@ if __name__ == '__main__':
         wandb.login(key=get_wandb_api_key())
         wandb.init(project="Symmetry-NO",
                    name=config.run_name,
+                   group="NS",
                    config=config)
 
     #

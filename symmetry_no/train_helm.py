@@ -212,6 +212,7 @@ if __name__ == '__main__':
         wandb.login(key=get_wandb_api_key())
         wandb.init(project="Symmetry-NO",
                    name=config.run_name,
+                   group="Helmholtz",
                    config=config)
 
     #

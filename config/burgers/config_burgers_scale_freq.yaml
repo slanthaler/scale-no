@@ -56,4 +56,4 @@ test_re: [
 augmentation_loss: 1
 augmentation_samples: 2
 use_augmentation:
-sample_virtual_instance: 1
+sample_virtual_instance: 0
