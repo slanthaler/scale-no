@@ -65,7 +65,8 @@ class R_trans(nn.Module):
 
 
 class R_transformations(nn.Module):
-    def __init__(self, width_list, modes1_list, modes2_list, level, mlp, n_feature=3):
+    def __init__(self, width_list, modes1_list, modes2_list, level, mlp, n_feature=3,
+                 scale_informed=True, frequency_pos_emb=True,):
         super(R_transformations, self).__init__()
         self.level = level
         self.modes1_list = modes1_list
@@ -73,14 +74,23 @@ class R_transformations(nn.Module):
         self.width_list = width_list
         self.mlp = mlp
         self.n_feature = n_feature
-        self.features = 3*self.n_feature
-        self.sparsity_threshold = 0.05
+        # self.sparsity_threshold = nn.Parameter(torch.tensor([0.05]))
+
+        self.scale_informed = scale_informed
+        self.frequency_pos_emb = frequency_pos_emb
+        if self.frequency_pos_emb and self.scale_informed:
+            embedding_feature = 3 * self.n_feature
+        elif self.frequency_pos_emb and not self.scale_informed:
+            embedding_feature = 2 * self.n_feature
+        elif not self.frequency_pos_emb and self.scale_informed:
+            embedding_feature = 1 * self.n_feature
+        else:
+            embedding_feature = 0
 
         self.channelexp = nn.ModuleList([
             nn.ModuleList([R_trans(width_list[0], width_list[0], modes1_list[0], modes2_list[0], mlp=True), ]),
         ])
-        self.p0 = MLP(self.features, width_list[0], width_list[0], dtype=torch.float)  # k_mat + Re
-        # self.p1 = MLP(self.features, width_list[0], width_list[0], dtype=torch.float)  # k_mat + Re
+        self.p = MLP(embedding_feature, width_list[0], width_list[0], dtype=torch.float)  # k_mat + Re
 
         for i in range(1,self.level):
             self.channelexp.append(nn.ModuleList([
@@ -137,11 +147,23 @@ class R_transformations(nn.Module):
             skip_in = self.init_skip_in(x, modes1_list, modes2_list)
 
         # add wavenumber k_mat
-        k_mat = self.get_k(batchsize, S1, S2, device=x.device)
-        re_mat = self.embed_re(Re, S1, S2)
-        re_weight = self.p0(torch.cat([k_mat, re_mat], dim=1))
-        x = x * re_weight
-        # x = x * (x.abs() > self.sparsity_threshold)
+        if self.frequency_pos_emb and self.scale_informed:
+            k_mat = self.get_k(batchsize, S1, S2, device=x.device)
+            re_mat = self.embed_re(Re, S1, S2)
+            feature = self.p(torch.cat([k_mat, re_mat], dim=1))
+            x = x * feature
+        elif self.frequency_pos_emb and not self.scale_informed:
+            k_mat = self.get_k(batchsize, S1, S2, device=x.device)
+            feature = self.p(k_mat)
+            x = x * feature
+        elif not self.frequency_pos_emb and self.scale_informed:
+            re_mat = self.embed_re(Re, S1, S2)
+            feature = self.p(re_mat)
+            x = x * feature
+        else:
+            x = x
+
+        # x = x * F.gelu(x.abs() - self.sparsity_threshold)
 
         # first MLP
         x1 = (x + skip_in[0])
@@ -213,7 +235,9 @@ class MLP(nn.Module):
         return x
 
 class FNO_U(nn.Module):
-    def __init__(self, modes1_list, modes2_list, width_list, level, mlp, depth=3, in_channel=9, out_channel=1, n_feature=16, boundary=False):
+    def __init__(self, modes1_list, modes2_list, width_list, level, mlp,
+                 scale_informed=True, frequency_pos_emb=True,
+                 depth=3, in_channel=9, out_channel=1, n_feature=16, boundary=False):
         super(FNO_U, self).__init__()
 
         """
@@ -240,6 +264,8 @@ class FNO_U(nn.Module):
         self.n_feature = n_feature
         self.size = 128
         self.boundary = boundary
+        self.scale_informed = scale_informed
+        self.frequency_pos_emb = frequency_pos_emb
 
         self.p = MLP(self.in_c, self.width, self.width) # input channel is 3: (a(x, y), x, y)
 
@@ -249,7 +275,8 @@ class FNO_U(nn.Module):
         self.norm1 = nn.ModuleList([])
         self.norm2 = nn.ModuleList([])
         for l in range(self.depth):
-            self.R.append(R_transformations(self.width_list, self.modes1_list, self.modes2_list, level, mlp, self.n_feature))
+            self.R.append(R_transformations(self.width_list, self.modes1_list, self.modes2_list, level, mlp, self.n_feature,
+                                            scale_informed=self.scale_informed, frequency_pos_emb=self.frequency_pos_emb,))
             self.mlp.append(MLP(self.width, self.width, self.width))
             # self.mlp.append(Local(self.width, self.width, self.width, in_shape=self.modes1_list[0]*2))
             self.w.append(nn.Conv2d(self.width, self.width, 1))

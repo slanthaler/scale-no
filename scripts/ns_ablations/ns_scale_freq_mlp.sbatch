@@ -21,5 +21,5 @@ conda activate cuda12
 export PYTHONPATH="/central/groups/astuart/zongyi/symmetry-no:$PYTHONPATH"
 
 # run code
-python3 /central/groups/astuart/zongyi/symmetry-no/symmetry_no/train_ns_ablations.py --config config/ns_ablations/config_ns_scale_freq_ufno.yaml
+python3 /central/groups/astuart/zongyi/symmetry-no/symmetry_no/train_ns_ablations.py --config config/ns_ablations/config_ns_scale_freq_mlp.yaml
 

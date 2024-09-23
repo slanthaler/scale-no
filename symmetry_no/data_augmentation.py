@@ -270,16 +270,30 @@ class RandomCropResizeTimeAR:
                 sized crop.
         """
 
-        H, W = x.shape[-2], x.shape[-1]
+        width, height = x.shape[-2], x.shape[-1]
+        assert width==height, 'Only allowing width==height for now!.'
+        assert width>=self.size_min, f'Cropping only allowed if (width,height)>={self.size_min}. Got {width=}, {height=}'
+        #
+        size_min = max(self.size_min,int(round(self.scale_min * width)))
+        for _ in range(10):
+            if rate == None:
+                rnd = torch.rand(1)
+                w = size_min + int((width-size_min) * rnd)
+                h = size_min + int((height-size_min) * rnd)
+            else:
+                if rate < 1:
+                    rate = 1 / rate
+                w = int(max(size_min, width//rate))
+                h = int(max(size_min, height//rate))
 
-        rate = 2
-        h = int(H // rate)
-        w = int(W // rate)
+            scale = np.sqrt((w/width) * (h/height))
+            re = re * scale**2
 
-        re = re / rate**2
-        i = torch.randint(0, H - h + 1, size=(1,)).item()
-        j = torch.randint(0, W - w + 1, size=(1,)).item()
-        return i, j, h, w, re
+            if 0 < w <= width and 0 < h <= height:
+                i = torch.randint(0, height - h + 1, size=(1,)).item()
+                j = torch.randint(0, width - w + 1, size=(1,)).item()
+                #
+                return i, j, h, w, re
 
     def crop(self, x, i, j, h, w):
         x = x[..., i:i + h, j:j + w]

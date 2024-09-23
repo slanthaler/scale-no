@@ -57,13 +57,29 @@ def main(config):
     modes = config.modes
     width = config.width
     depth = config.depth
+    mlp = config.mlp
     scale_informed = config.scale_informed
     frequency_pos_emb = config.frequency_pos_emb
     print(f"Width: {width}, Depth: {depth}, Modes: {modes}, Scale Informed: {scale_informed}, Frequency Pos Emb: {frequency_pos_emb}")
 
-    model = FNO_mlp(modes1=modes, modes2=modes, width=width, depth=depth, in_channel=in_channel,
+    ### U-shape FNO
+    modes_list = []
+    width_list = []
+    for i in range(5):
+        n = 2**i
+        modes_list.append(modes//n)
+        width_list.append(n*width)
+
+    if config.model == "FNO_re":
+        model = FNO_mlp(modes1=modes, modes2=modes, width=width, depth=depth, in_channel=in_channel,
                     scale_informed=scale_informed, frequency_pos_emb=frequency_pos_emb,
-                    sub=0, boundary=False).to(device)
+                    mlp=mlp, sub=0, boundary=False).to(device)
+    elif config.model == "FNO_u":
+        model = FNO_U(modes_list, modes_list, width_list, level=config.level, depth=depth, mlp=mlp,
+                      scale_informed=scale_informed, frequency_pos_emb=frequency_pos_emb,
+                      in_channel=in_channel, out_channel=1).to(device)
+    else:
+        raise NotImplementedError("model not implement")
 
     print('FNO2d parameter count: ', count_params(model))
 
@@ -182,6 +198,7 @@ if __name__ == '__main__':
 
     # set wandb to false if nowandb is set
     args.wandb = not args.nowandb
+    # args.wandb = False
 
     # read the config file
     config = ReadConfig(args.name, args.config)

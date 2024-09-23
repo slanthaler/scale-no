@@ -179,7 +179,7 @@ class MLP(nn.Module):
 class FNO_mlp(nn.Module):
     def __init__(self, width, modes1=0, modes2=0, depth=4, in_channel=7,
                  scale_informed=True, frequency_pos_emb=True, grid_feature=False,
-                 out_channel=1, sub=4, boundary=False, mlp=False):
+                 out_channel=1, sub=4, n_feature=10, boundary=False, mlp=False):
         super(FNO_mlp, self).__init__()
 
         """
@@ -203,7 +203,7 @@ class FNO_mlp(nn.Module):
         self.scale_informed = scale_informed
         self.frequency_pos_emb = frequency_pos_emb
 
-        self.n_feature = 5
+        self.n_feature = n_feature
         self.sub = sub
         self.boundary = boundary
         self.grid_feature = grid_feature

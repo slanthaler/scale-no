@@ -1,16 +1,18 @@
 ---
 #
 name: 'ns'
-run_name: 'NS, scale, freq'
+run_name: 'NS, scale, no freq, ufno'
 
 dataset: 'NS'
+
 # fno2d
-modes: 32
-width: 32
-depth: 4
-mlp: True
+modes: 36
+width: 36
+depth: 3
+level: 2
+mlp: False
 scale_informed: True
-frequency_pos_emb: True
+frequency_pos_emb: False
 
 # training
 learning_rate: 1e-3
@@ -19,7 +21,7 @@ weight_decay: 1e-4
 batch_size: 10
 epochs: 201
 
-model: "FNO_re" # "UNet", "FNO", "FNO_re"
+model: "FNO_u" # "UNet", "FNO", "FNO_re"
 n_train: 50
 n_test: 5
 n_selfcon: 20
