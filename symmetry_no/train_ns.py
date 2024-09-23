@@ -206,7 +206,7 @@ if __name__ == '__main__':
 
     # set wandb to false if nowandb is set
     args.wandb = not args.nowandb
-    args.wandb = False
+    # args.wandb = False
 
     # read the config file
     config = ReadConfig(args.name, args.config)

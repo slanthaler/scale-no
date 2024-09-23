@@ -5,7 +5,7 @@ run_name: 'NS, scale, freq, ufno'
 
 dataset: 'NS'
 # fno2d
-modes: 64
+modes: 32
 width: 32
 depth: 4
 level: 2
