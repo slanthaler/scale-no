@@ -21,5 +21,5 @@ conda activate cuda12
 export PYTHONPATH="/central/groups/astuart/zongyi/symmetry-no:$PYTHONPATH"
 
 # run code
-python3 /central/groups/astuart/zongyi/symmetry-no/symmetry_no/train_helm.py --config --config config/helmholtz_ablations/config_helmholtz_scale_nofreq.yaml
+python3 /central/groups/astuart/zongyi/symmetry-no/symmetry_no/train_helm.py --config config/helmholtz_ablations/config_helmholtz_scale_nofreq.yaml
 
