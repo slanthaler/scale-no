@@ -6,7 +6,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 # matplotlib.use('TkAgg')
 
-sys.path.append("/home/wumming/Documents/symmetry-no")
+# sys.path.append("/home/wumming/Documents/symmetry-no")
 # sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
 
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData, BurgersData

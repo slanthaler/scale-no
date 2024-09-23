@@ -62,6 +62,10 @@ def main(config):
     width = config.width
     depth = config.depth
     mlp = config.mlp
+    scale_informed = config.scale_informed
+    frequency_pos_emb = config.frequency_pos_emb
+    print(f"Width: {width}, Depth: {depth}, Modes: {modes1}, Scale Informed: {scale_informed}, Frequency Pos Emb: {frequency_pos_emb}")
+
 
     ### U-shape FNO
     S = config.S
@@ -80,14 +84,14 @@ def main(config):
     elif config.model == "FNO_u":
         model = FNO_U(modes_list, modes_list, width_list, level=config.level, depth=depth, mlp=mlp, in_channel=in_channel, out_channel=out_channel, boundary=True).to(device)
     elif config.model == "FNO_re":
-        model = FNO_mlp(width, modes1, modes2, depth, mlp=mlp, in_channel=in_channel, out_channel=out_channel, sub=0, grid_feature=True, boundary=True).to(device)
+        model = FNO_mlp(width, modes1, modes2, depth, scale_informed=scale_informed, frequency_pos_emb=frequency_pos_emb,
+                        mlp=mlp, in_channel=in_channel, out_channel=out_channel, sub=0, grid_feature=True, boundary=True).to(device)
     else:
         raise NotImplementedError("model not implement")
     print('FNO2d parameter count: ', count_params(model))
 
-    model.load_state_dict(torch.load("helm_model_refno.h5"))
+    # model.load_state_dict(torch.load("helm_model_refno.h5"))
 
-    #
     batch_size = config.batch_size
     epochs = config.epochs
     epoch_test = config.epoch_test
@@ -179,7 +183,7 @@ def main(config):
 
     #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
     # if args.wandb:
-    torch.save(model.state_dict(), "helm_model_refno_sc.h5")
+    # torch.save(model.state_dict(), "helm_model_refno_sc.h5")
     # wandb.save('../model.h5')
 
 
@@ -191,7 +195,7 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='helmholtz_sc',
+                        # default='helmholtz_sc',
                         # default='ns',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",

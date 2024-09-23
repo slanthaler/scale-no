@@ -1,12 +1,12 @@
 #!/bin/bash
 
-#SBATCH --time=40:00:00
+#SBATCH --time=24:00:00
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --gres gpu:1
 #SBATCH --mem=64G
 #SBATCH --partition=gpu
-#SBATCH --job-name="symmetry-ns"
+#SBATCH --job-name="symmetry-helmholtz"
 #SBATCH --output=slurm-%x.%j.out
 #SBATCH --error=slurm-%x.%j.out
 #SBATCH --mail-user=zongyili@caltech.edu
@@ -21,5 +21,5 @@ conda activate cuda12
 export PYTHONPATH="/central/groups/astuart/zongyi/symmetry-no:$PYTHONPATH"
 
 # run code
-python3 /central/groups/astuart/zongyi/symmetry-no/symmetry_no/train_ns.py --config config/ns/config_ns_scale_freq_ufno.yaml
+python3 /central/groups/astuart/zongyi/symmetry-no/symmetry_no/train_helm.py --config --config config/helmholtz_ablations/config_helmholtz_scale_nofreq.yaml
 
