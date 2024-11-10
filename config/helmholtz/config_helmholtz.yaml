@@ -1,0 +1,71 @@
+---
+#
+name: 'helmholtz'
+run_name: 'helmholtz'
+dataset: 'helmholtz'
+
+# fno2d
+model: "FNO_re" # "UNet", "FNO", "FNO_re"
+
+modes: 64
+width: 32
+depth: 4
+level: 2
+mlp: False
+
+# training
+learning_rate: 1e-3
+weight_decay: 1e-4
+batch_size: 16
+epochs: 200
+
+n_train: 1024
+n_test: 128
+n_selfcon: 1024
+epochs_selfcon: 50 # now epochs_selfcon is the epoch to start self-consistency loss
+epoch_test: 5
+
+S: 128
+
+# datasets
+#data_dir: '/media/wumming/HHD/HHD_data/helmholtz/data'
+data_dir: '/central/groups/astuart/zongyi/helmholtz/data'
+
+
+##train_data: 'helmholtz_BC_k25_tanh_amin1.0_amax12.0_Nsamp1024_Ns257_alphacoeff1.50_alphag3.50.mat'
+#train_data: 'helmholtz_BC_k10_tanh_amin1.0_amax12.0_Nsamp1024_Ns129_alphacoeff1.50_alphag3.50.mat'
+##train_data: 'helmholtz_BC_k5_tanh_amin1.0_amax12.0_Nsamp1024_Ns65_alphacoeff1.50_alphag3.50.mat'
+#train_re: 10
+#test_data: [
+#  'helmholtz_test_BC_k5_tanh_amin1.0_amax12.0_Nsamp128_Ns65_alphacoeff1.50_alphag3.50.mat',
+#  'helmholtz_test_BC_k10_tanh_amin1.0_amax12.0_Nsamp128_Ns129_alphacoeff1.50_alphag3.50.mat',
+#  'helmholtz_test_BC_k25_tanh_amin1.0_amax12.0_Nsamp128_Ns257_alphacoeff1.50_alphag3.50.mat',
+#  'helmholtz_test_BC_k50_tanh_amin1.0_amax12.0_Nsamp128_Ns513_alphacoeff1.50_alphag3.50.mat',
+#  'helmholtz_test_BC_k100_tanh_amin1.0_amax12.0_Nsamp128_Ns1025_alphacoeff1.50_alphag3.50.mat',
+#]
+
+train_data: [
+'helmholtz_BC_k5_lognormal_amin0.0_amax0.0_Nsamp1024_Ns65_alphacoeff1.50_alphag3.50.mat',
+'helmholtz_BC_k10_lognormal_amin0.0_amax0.0_Nsamp1024_Ns129_alphacoeff1.50_alphag3.50.mat',
+'helmholtz_BC_k25_lognormal_amin0.0_amax0.0_Nsamp1024_Ns257_alphacoeff1.50_alphag3.50.mat',
+]
+train_re: [5,10,25,]
+
+test_data: [
+  'helmholtz_test_BC_k1_lognormal_amin0.0_amax0.0_Nsamp128_Ns65_alphacoeff1.50_alphag3.50.mat',
+  'helmholtz_test_BC_k2_lognormal_amin0.0_amax0.0_Nsamp128_Ns65_alphacoeff1.50_alphag3.50.mat',
+  'helmholtz_test_BC_k5_lognormal_amin0.0_amax0.0_Nsamp128_Ns65_alphacoeff1.50_alphag3.50.mat',
+  'helmholtz_test_BC_k10_lognormal_amin0.0_amax0.0_Nsamp128_Ns129_alphacoeff1.50_alphag3.50.mat',
+  'helmholtz_test_BC_k25_lognormal_amin0.0_amax0.0_Nsamp128_Ns257_alphacoeff1.50_alphag3.50.mat',
+  'helmholtz_test_BC_k50_lognormal_amin0.0_amax0.0_Nsamp128_Ns513_alphacoeff1.50_alphag3.50.mat',
+  'helmholtz_test_BC_k100_lognormal_amin0.0_amax0.0_Nsamp128_Ns1025_alphacoeff1.50_alphag3.50.mat',
+]
+#test_re: [25,]
+test_re: [1,2,5,10,25,50,100]
+selfcon_data:
+selfcon_re:
+#
+augmentation_loss: 0
+augmentation_samples: 2
+use_augmentation:
+sample_virtual_instance: 0

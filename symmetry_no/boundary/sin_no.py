@@ -1,6 +1,6 @@
 """
 
-Taken from 
+Taken from
 [https://github.com/neuraloperator/neuraloperator/blob/master/fourier_2d.py]
 @author: Zongyi Li (with some minor tweaks by Sam Lanthaler)
 
@@ -15,6 +15,7 @@ from symmetry_no.utilities3 import *
 torch.manual_seed(0)
 np.random.seed(0)
 
+
 ################################################################
 # fourier layer
 ################################################################
@@ -28,33 +29,79 @@ class SpectralConv2d(nn.Module):
 
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.modes1 = modes1 #Number of Fourier modes to multiply, at most floor(N/2) + 1
+        self.modes1 = modes1  # Number of Fourier modes to multiply, at most floor(N/2) + 1
         self.modes2 = modes2
 
         self.scale = (1 / (in_channels * out_channels))
-        self.weights1 = nn.Parameter(self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
-        self.weights2 = nn.Parameter(self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
+        self.weights1 = nn.Parameter(
+            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.float))
+        self.weights2 = nn.Parameter(
+            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.float))
 
     # Complex multiplication
     def compl_mul2d(self, input, weights):
         # (batch, in_channel, x,y ), (in_channel, out_channel, x,y) -> (batch, out_channel, x,y)
         return torch.einsum("bixy,ioxy->boxy", input, weights)
 
+    def dctII(self, u):
+        Nx = u.shape[-1]
+
+        v = torch.cat([u[..., ::2], u[..., 1::2].flip(dims=[-1])], dim=-1)
+        V = torch.fft.fft(v, dim=-1)
+        k = torch.arange(Nx, dtype=u.dtype, device=u.device)
+        W4 = torch.exp(-.5j * torch.pi * k / Nx)
+        return 2 * (V * W4).real / Nx
+
+    def idctII(self, a):
+        Nx = a.shape[-1]
+
+        k = torch.arange(Nx, dtype=a.dtype, device=a.device)
+        iW4 = 1 / torch.exp(-.5j * torch.pi * k / Nx);
+        iW4[..., 0] /= 2
+
+        V = torch.fft.ifft(a * iW4).real
+        u = torch.zeros_like(V)
+        u[..., ::2], u[..., 1::2] = V[..., :Nx - (Nx // 2)], V.flip(dims=[-1])[..., :Nx // 2]
+
+        return u * Nx
+
+    def dstII(self, u):
+        v = u.clone()
+        v[..., 1::2] = -v[..., 1::2]
+        return self.dctII(v).flip(dims=[-1])
+
+    def idstII(self, a):
+        v = self.idctII(a.flip(dims=[-1]))
+        u = v.clone()
+        u[..., 1::2] = -u[..., 1::2]
+        return u
+
     def forward(self, x):
-        batchsize = x.shape[0]
-        #Compute Fourier coeffcients up to factor of e^(- something constant)
-        x_ft = torch.fft.rfft2(x)
+        batchsize, C, Nx, Ny = x.shape
+        # Compute Fourier coeffcients up to factor of e^(- something constant)
+
+        x = self.dstII(x)
+        x = x.permute(0,1,3,2)
+        x = self.dstII(x)
+        x_ft = x
+        # x_ft = torch.fft.rfft2(x)
+
 
         # Multiply relevant Fourier modes
-        out_ft = torch.zeros(batchsize, self.out_channels,  x.size(-2), x.size(-1)//2 + 1, dtype=torch.cfloat, device=x.device)
+        out_ft = torch.zeros(batchsize, self.out_channels, x.size(-2), x.size(-1) // 2 + 1, dtype=torch.cfloat,
+                             device=x.device)
         out_ft[:, :, :self.modes1, :self.modes2] = \
             self.compl_mul2d(x_ft[:, :, :self.modes1, :self.modes2], self.weights1)
         out_ft[:, :, -self.modes1:, :self.modes2] = \
             self.compl_mul2d(x_ft[:, :, -self.modes1:, :self.modes2], self.weights2)
 
-        #Return to physical space
-        x = torch.fft.irfft2(out_ft, s=(x.size(-2), x.size(-1)))
+        # Return to physical space
+        x = x_ft
+        x = self.idstII(x)
+        x = x.permute(0,1,3,2)
+        x = self.idstII(x)
         return x
+
 
 class MLP(nn.Module):
     def __init__(self, in_channels, out_channels, mid_channels):
@@ -68,9 +115,10 @@ class MLP(nn.Module):
         x = self.mlp2(x)
         return x
 
-class FNO2d(nn.Module):
-    def __init__(self, modes1, modes2,  width, depth=4, in_channel=7, out_channel=1):
-        super(FNO2d, self).__init__()
+
+class SIN_NO2d(nn.Module):
+    def __init__(self, modes1, modes2, width, depth=4, in_channel=7, out_channel=1):
+        super(SIN_NO2d, self).__init__()
 
         """
         The overall network. It contains 4 layers of the Fourier layer.
@@ -78,7 +126,7 @@ class FNO2d(nn.Module):
         2. 4 layers of the integral operators u' = (W + K)(u).
             W defined by self.w; K defined by self.conv .
         3. Project from the channel space to the output space by self.fc1 and self.fc2 .
-        
+
         input: the solution of the coefficient function, boundary conditions and locations (a(x, y), BC1, BC2, BC3, BC4, x, y)
         input shape: (batchsize, x=s, y=s, c=7)
         output: the solution 
@@ -91,8 +139,9 @@ class FNO2d(nn.Module):
         self.depth = depth
         self.in_channel = in_channel
         self.out_channel = out_channel
-        
-        self.p = nn.Linear(self.in_channel, self.width) # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
+
+        self.p = nn.Linear(self.in_channel,
+                           self.width)  # input channel is 7: (a(x, y), BC_left, BC_bottom, BC_right, BC_top, x, y)
 
         self.conv = []
         self.mlp = []
@@ -106,13 +155,13 @@ class FNO2d(nn.Module):
         self.mlp = nn.ModuleList(self.mlp)
         self.w = nn.ModuleList(self.w)
         #
-        self.q = MLP(self.width, self.out_channel, self.width * 4) # output channel is 1: u(x, y)
+        self.q = MLP(self.width, self.out_channel, self.width * 4)  # output channel is 1: u(x, y)
 
     def forward(self, x):
         grid = self.get_grid(x.shape, x.device)
-        x = torch.cat((x, grid), dim=1) # 1 is the channel dimension
-        x = self.p(x.permute(0,2,3,1)).permute(0,3,1,2)
-        #x = x.permute(0, 3, 1, 2)
+        x = torch.cat((x, grid), dim=1)  # 1 is the channel dimension
+        x = self.p(x.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
+        # x = x.permute(0, 3, 1, 2)
 
         for i in range(self.depth):
             x1 = self.conv[i](x)
@@ -122,9 +171,9 @@ class FNO2d(nn.Module):
             x = F.gelu(x)
 
         x = self.q(x)
-        #x = x.permute(0, 2, 3, 1)
+        # x = x.permute(0, 2, 3, 1)
         return x
-    
+
     def get_grid(self, shape, device):
         batchsize, size_x, size_y = shape[0], shape[2], shape[3]
         gridx = torch.tensor(np.linspace(0, 1, size_x), dtype=torch.float)
@@ -132,3 +181,4 @@ class FNO2d(nn.Module):
         gridy = torch.tensor(np.linspace(0, 1, size_y), dtype=torch.float)
         gridy = gridy.reshape(1, 1, 1, size_y).repeat([batchsize, 1, size_x, 1])
         return torch.cat((gridx, gridy), dim=1).to(device)
+

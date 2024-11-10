@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import torch
 
 def FD_x(a,dx):
     """
@@ -107,4 +108,13 @@ def DarcyExtractBC(x,y):
         y = y[0]
 
     return x
-        
+
+def Upsample(x, size):
+    """
+    given input x on [d,d], we double the domain to [s,s]
+    """
+    while x.shape[-1] < size:
+        x = torch.cat([x, x.flip(-2)], dim=-2)
+        x = torch.cat([x, x.flip(-1)], dim=-1)
+    x = x[..., :size, :size]
+    return x
