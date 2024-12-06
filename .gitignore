@@ -1,7 +1,0 @@
-*~
-\#*
-wandb/*
-symmetry-no/__pycache__
-*.cpython*
-*.egg-info
-config/wandb_api_key.txt
