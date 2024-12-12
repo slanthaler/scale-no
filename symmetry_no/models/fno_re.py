@@ -98,7 +98,7 @@ class SpectralConv3d(nn.Module):
         return k_mat
 
     def embed_re(self, re, S1, S2, S3):
-        pow = torch.arange(start=-self.n_feature, end=self.n_feature, step=2, device=re.device).reshape(1, self.n_feature, 1, 1, 1) / self.n_feature
+        pow = torch.arange(start=-self.n_feature, end=0, step=1, device=re.device).reshape(1, self.n_feature, 1, 1, 1) / self.n_feature
         re_mat = torch.pow(re, pow).repeat(1, 1, S1, S2, S3 // 2 + 1)
         return re_mat
 
