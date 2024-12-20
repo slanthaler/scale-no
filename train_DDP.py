@@ -1,0 +1,211 @@
+import sys
+import os
+import wandb
+import argparse
+import torch
+import torch.distributed as dist
+import torch.multiprocessing as mp
+from torch.nn.parallel import DistributedDataParallel as DDP
+os.environ["TORCH_DISTRIBUTED_DEBUG"] = "INFO"
+
+# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
+from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
+from symmetry_no.config_helper import ReadConfig
+from symmetry_no.wandb_utilities import *
+from symmetry_no.models.fno2d import *
+from symmetry_no.models.fno2d_doubled import *
+from symmetry_no.models.fno_u_ddp import *
+from symmetry_no.models.fno_re import *
+from symmetry_no.selfconsistency import LossSelfconsistency
+from symmetry_no.gaussian_random_field import sample_NS
+
+
+def main(rank, world_size, config, args):
+    # Initialize process group
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "12355"
+    torch.cuda.set_device(rank)
+    dist.init_process_group(backend='nccl', world_size=world_size, rank=rank)
+
+    #
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    print(f'Using cuda? {device}')
+    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
+
+    # Set random seeds and deterministic pytorch for reproducibility
+    torch.manual_seed(config.seed)
+    torch.backends.cudnn.deterministic = True
+
+    # load training and test datasets
+    if config.dataset == 'darcy':
+        print('Loading Darcy datasets...')
+        data = DarcyData(config)
+        n_train = config.n_train
+        n_test = config.n_test
+
+    elif config.dataset == 'helmholtz':
+        print('Loading Helmholtz datasets...')
+        data = HelmholtzData(config)
+        n_train = config.n_train
+        n_test = config.n_test
+
+    elif config.dataset == 'NS':
+        print('Loading NS datasets...')
+        data = NSData(config)
+        n_train = config.n_train * config.T
+        n_test = config.n_test * config.T
+
+    else:
+        print("config.dataset should be either 'darcy' or 'NS'.")
+
+    # Initialize our model, recursively go over all modules and convert their parameters and buffers to CUDA tensors (if device is set to cuda)
+    modes1 = config.modes
+    modes2 = config.modes
+    width = config.width
+    depth = config.depth
+    mlp = config.mlp
+
+    ### U-shape FNO
+    S = config.S
+    modes = S // 2
+    modes_list = []
+    width_list = []
+    for i in range(depth):
+        n = 2 ** i
+        modes_list.append(modes // n)
+        width_list.append(n * width)
+
+    model = FNO_U(modes_list, modes_list, width_list, depth=3, mlp=mlp, in_channel=7, out_channel=1).to(device)
+    model = DDP(model, device_ids=[rank], find_unused_parameters=False)
+    print('FNO2d parameter count: ', count_params(model))
+
+    #
+    batch_size = config.batch_size
+    epochs = config.epochs
+    epoch_test = config.epoch_test
+    start_selfcon = config.epochs_selfcon
+    track_selfcon = config.track_selfcon
+    augmentation_samples = config.augmentation_samples
+    sample_virtual_instance = config.sample_virtual_instance
+
+    use_augmentation = config.augmentation_loss
+    iterations = epochs * max(1, n_train // batch_size)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=iterations)
+
+    # WandB – wandb.watch() automatically fetches all layer dimensions, gradients, model parameters and logs them automatically to your dashboard.
+    # Using log="all" log histograms of parameter values in addition to gradients
+    if args.wandb:
+        wandb.login(key=get_wandb_api_key())
+        wandb.init(project="Symmetry-NO",
+                   name=config.run_name,
+                   config=config)
+        wandb.watch(model, log_freq=20, log="all")
+
+    loss_fn = LpLoss(size_average=False)
+    for epoch in range(0, epochs + 1):  # config.epochs
+        #
+        model.train()
+        t1 = default_timer()
+        train_l2 = 0
+        train_aug = 0
+        train_sc = 0
+
+        # training loop
+        for d in data.train_loader:
+            x, y, re = d['train']
+            x, y, re = x.to(device), y.to(device), re.to(device)
+
+            # supervised training
+            optimizer.zero_grad()
+            out = model(x, re)
+
+            loss = loss_fn(out.view(batch_size, -1), y.view(batch_size, -1))
+            train_l2 += loss.item()
+
+            # augmentation via sub-sampling
+            if use_augmentation:
+                loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re)
+                loss += 1.0 * loss_aug
+                train_aug += loss_aug.item()
+
+            if sample_virtual_instance and (epoch >= start_selfcon):
+                rate = torch.rand(1) * 5 * (epoch / epochs) + 1
+                new_x, rate = sample_NS(input=x, rate=rate, keepsize=True)
+                new_re = re * rate
+                loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re)
+                loss += 0.5 * loss_sc * (epoch / epochs)
+                train_sc += loss_sc.item()
+
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
+
+        #
+        model.eval()
+        test_l2 = np.zeros((len(data.test_loaders),))
+        if epoch % epoch_test == 0:
+            with torch.no_grad():
+                for i, test_loader in enumerate(data.test_loaders):
+                    for x, y, re in test_loader:
+                        x, y, re = x.to(device), y.to(device), re.to(device)
+
+                        out = model(x, re)
+                        # DO WE NEED TO NORMALIZE THE OUTPUT??
+                        test_l2[i] += loss_fn(out.view(batch_size, -1), y.view(batch_size, -1)).item()
+
+        # normalize losses
+        train_l2 /= n_train
+        train_sc /= n_train
+        train_aug /= n_train
+        test_l2 /= n_test
+
+        t2 = default_timer()
+        if args.wandb:
+            wandb.log({'time': t2 - t1, 'train_l2': train_l2, 'train_selfcon': train_sc})
+            wandb.log({f"test_l2/loss-{ii}": loss for ii, loss in enumerate(test_l2)})
+        test_losses = " / ".join([f"{val:.5f}" for val in test_l2])
+        print(
+            f'[{epoch:3}], time: {t2 - t1:.3f}, train: {train_l2:.5f}, test: {test_losses}, train_aug: {train_aug:.5f}, train_sc: {train_sc:.5f}',
+            flush=True)
+
+    #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
+    if args.wandb:
+        torch.save(model.state_dict(), "model.h5")
+    wandb.save('model.h5')
+
+    dist.destroy_process_group()
+
+
+#
+if __name__ == '__main__':
+    # parse command line arguments
+    # (need to specify <name> of run = config_<name>.yaml)
+    parser = argparse.ArgumentParser()
+    # group = parser.add_mutually_exclusive_group()
+    parser.add_argument('-n', "--name",
+                        type=str,
+                        default='ns',
+                        help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
+    parser.add_argument('-c', "--config",
+                        type=str,
+                        help="Specify the full config-file path.")
+    parser.add_argument('--nowandb', action='store_true')
+    args = parser.parse_args()
+
+    # set wandb to false if nowandb is set
+    args.wandb = not args.nowandb
+
+    # read the config file
+    config = ReadConfig(args.name, args.config)
+
+    # WandB – Initialize a new run
+    #
+    print('Command line inputs: --')
+    print('Config name: ', args.name)
+    print('Config file: ', args.config, flush=True)
+
+    # run the main training loop
+    world_size = torch.cuda.device_count()
+    mp.spawn(main, args=(world_size, config, args), nprocs=world_size)
