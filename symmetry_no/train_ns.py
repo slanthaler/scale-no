@@ -83,7 +83,10 @@ def main(config):
     elif config.model == "FNO_u":
         model = FNO_U(modes_list, modes_list, width_list, level=config.level, depth=depth, mlp=mlp, in_channel=in_channel, out_channel=1).to(device)
     elif config.model == "FNO_re":
-        model = FNO_mlp(width, modes1, modes2, modes3, depth, mlp=mlp, in_channel=in_channel, out_channel=1).to(device)
+        model = FNO_mlp(width, modes1, modes2, modes3, depth, mlp=mlp, 
+                       scale_informed=config.scale_informed,
+                       frequency_pos_emb=config.frequency_pos_emb,
+                       in_channel=in_channel, out_channel=1).to(device)
     else:
         raise NotImplementedError("model not implement")
 

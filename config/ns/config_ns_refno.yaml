@@ -5,9 +5,9 @@ run_name: 'NS RE FNO-re'
 
 dataset: 'NS'
 # fno2d
-modes: 64
-modes3: 64
-width: 64
+modes: 32
+modes3: 32
+width: 32
 depth: 4
 mlp: False
 scale_informed: False
