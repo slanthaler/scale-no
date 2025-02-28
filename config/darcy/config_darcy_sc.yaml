@@ -1,0 +1,50 @@
+---
+#
+name: 'darcy'
+run_name: 'Darcy SC'
+dataset: 'darcy'
+
+# fno2d
+modes: 20
+width: 64
+depth: 4
+
+# training
+learning_rate: 1e-3
+weight_decay: 1e-4
+batch_size: 8
+epochs: 200
+epoch_test: 10
+
+n_train: 1024
+n_test: 128
+n_selfcon: 1024
+epochs_selfcon: 50 # now epochs_selfcon is the epoch to start self-consistency loss
+grid_size: 128
+
+# datasets
+data_dir: '/media/wumming/HHD/HHD_data/darcy'
+#data_dir: '/central/groups/astuart/slanth/SymmetryNO/symmetry-no/data'
+
+#train_data: 'darcy_BC_tanh_amin1.0_amax12.0_Nsamp1024_Ns128_alphacoeff1.50_alphag3.50.mat'
+#test_data: 'darcy_test_BC_tanh_amin1.0_amax12.0_Nsamp256_Ns128_alphacoeff1.50_alphag3.50.mat'
+#test_data: ['darcy_test_BC_tanh_amin1.0_amax12.0_Nsamp256_Ns64_alphacoeff1.50_alphag3.50.mat',
+#            'darcy_test_BC_tanh_amin1.0_amax12.0_Nsamp256_Ns96_alphacoeff1.50_alphag3.50.mat',
+#            'darcy_test_BC_tanh_amin1.0_amax12.0_Nsamp256_Ns128_alphacoeff1.50_alphag3.50.mat',
+#            'darcy_test_BC_tanh_amin1.0_amax12.0_Nsamp256_Ns256_alphacoeff1.50_alphag3.50.mat',
+#            'darcy_test_BC_tanh_amin1.0_amax12.0_Nsamp256_Ns512_alphacoeff1.50_alphag3.50.mat']
+train_data: 'darcy_GRFlength_Nsamp1024_Ns128_alpha0.50_length1.00_alphag1.00_lengthg1.00.mat'
+test_data: [
+  'darcy_test_GRFlength_Nsamp1024_Ns64_alpha0.50_length2.00_alphag1.00_lengthg1.00.mat',
+  'darcy_test_GRFlength_Nsamp1024_Ns96_alpha0.50_length1.33_alphag1.00_lengthg1.00.mat',
+  'darcy_test_GRFlength_Nsamp1024_Ns128_alpha0.50_length1.00_alphag1.00_lengthg1.00.mat',
+  'darcy_test_GRFlength_Nsamp256_Ns256_alpha0.50_length0.50_alphag1.00_lengthg1.00.mat',
+  'darcy_test_GRFlength_Nsamp128_Ns512_alpha0.50_length0.25_alphag1.00_lengthg1.00.mat',
+]
+selfcon_data:
+
+#
+augmentation_loss: 1
+augmentation_samples: 2
+use_augmentation:
+sample_virtual_instance: 1
