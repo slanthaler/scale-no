@@ -2,8 +2,6 @@ import sys
 import wandb
 import argparse
 
-# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
-
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
 from symmetry_no.config_helper import ReadConfig
 from symmetry_no.wandb_utilities import *
@@ -66,9 +64,9 @@ def main(config):
     modes_list = []
     width_list = []
     for i in range(5):
-        n = 2**i
-        modes_list.append(modes//n)
-        width_list.append(n*width)
+        # n = 2**i
+        modes_list.append(modes//(2**i))
+        width_list.append(width*int(np.sqrt(2)**i))
 
     if config.model == "FNO_re":
         model = FNO_mlp(modes1=modes, modes2=modes, width=width, depth=depth, in_channel=in_channel,
@@ -77,11 +75,11 @@ def main(config):
     elif config.model == "FNO_u":
         model = FNO_U(modes_list, modes_list, width_list, level=config.level, depth=depth, mlp=mlp,
                       scale_informed=scale_informed, frequency_pos_emb=frequency_pos_emb,
-                      in_channel=in_channel, out_channel=1).to(device)
+                      in_channel=in_channel, out_channel=1, re_log=True).to(device)
     else:
         raise NotImplementedError("model not implement")
 
-    print('FNO2d parameter count: ', count_params(model))
+    print('Model parameter count: ', count_params(model))
 
     batch_size = config.batch_size
     epochs = config.epochs
@@ -191,7 +189,7 @@ if __name__ == '__main__':
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,
-                        default='config/ns/config_ns_scale_freq.yaml',
+                        default='config/ns_ablations/config_ns_scale_freq_ufno.yaml',
                         help="Specify the full config-file path.")
     parser.add_argument('--nowandb', action='store_true')
     args = parser.parse_args()

@@ -2,7 +2,6 @@ import sys
 import wandb
 import argparse
 
-# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
 
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
 from symmetry_no.config_helper import ReadConfig
@@ -82,10 +81,11 @@ def main(config):
     elif config.model == "FNO":
         model = FNO2d(modes1, modes2, width, depth, in_channel=in_channel, out_channel=out_channel, boundary=True).to(device)
     elif config.model == "FNO_u":
-        model = FNO_U(modes_list, modes_list, width_list, level=config.level, depth=depth, mlp=mlp, in_channel=in_channel, out_channel=out_channel, boundary=True).to(device)
+        model = FNO_U(modes_list, modes_list, width_list, level=config.level, depth=depth, mlp=mlp, in_channel=in_channel,
+                      out_channel=out_channel, boundary=True, re_log=False).to(device)
     elif config.model == "FNO_re":
         model = FNO_mlp(width, modes1, modes2, depth, scale_informed=scale_informed, frequency_pos_emb=frequency_pos_emb,
-                        mlp=mlp, in_channel=in_channel, out_channel=out_channel, sub=0, grid_feature=True, boundary=True).to(device)
+                        mlp=mlp, in_channel=in_channel, out_channel=out_channel, sub=0, grid_feature=0, boundary=True, re_log=False).to(device)
     else:
         raise NotImplementedError("model not implement")
     print('FNO2d parameter count: ', count_params(model))
@@ -183,8 +183,10 @@ def main(config):
 
     #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
     # if args.wandb:
-    # torch.save(model.state_dict(), "helm_model_refno_sc.h5")
+    torch.save(model.state_dict(), "helm_model_sino_aug.pt")
+    print("model saved")
     # wandb.save('../model.h5')
+
 
 
 #
@@ -195,18 +197,17 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        # default='helmholtz_sc',
-                        # default='ns',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,
+                        default='config/helmholtz_ablations/config_helmholtz_scale_freq.yaml',
                         help="Specify the full config-file path.")
     parser.add_argument('--nowandb', action='store_true')
     args = parser.parse_args()
 
     # set wandb to false if nowandb is set
-    args.wandb = not args.nowandb
-    # args.wandb = False
+    # args.wandb = not args.nowandb
+    args.wandb = False
 
     # read the config file
     config = ReadConfig(args.name, args.config)

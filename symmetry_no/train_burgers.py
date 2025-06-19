@@ -4,10 +4,7 @@ import argparse
 import time
 import matplotlib
 import matplotlib.pyplot as plt
-# matplotlib.use('TkAgg')
 
-# sys.path.append("/home/wumming/Documents/symmetry-no")
-# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
 
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData, BurgersData
 from symmetry_no.config_helper import ReadConfig
@@ -74,7 +71,7 @@ def main(config):
     print(f"Width: {width}, Depth: {depth}, Modes: {modes}, Scale Informed: {scale_informed}, Frequency Pos Emb: {frequency_pos_emb}")
 
     model = FNO_mlp(modes1=16, modes2=modes, width=width, depth=depth, in_channel=in_channel,
-                    scale_informed=scale_informed, frequency_pos_emb=frequency_pos_emb,
+                    scale_informed=scale_informed, frequency_pos_emb=frequency_pos_emb, 
                     sub=0, boundary=False).to(device)
     # model = FNO2d(modes1=16, modes2=modes, width=width, depth=depth, in_channel=in_channel, boundary=False).to(device)
 
@@ -191,6 +188,7 @@ if __name__ == '__main__':
 
     # set wandb to false if nowandb is set
     args.wandb = not args.nowandb
+    args.wandb = False
 
     # read the config file
     config = ReadConfig(args.name, args.config)

@@ -88,7 +88,9 @@ class R_transformations(nn.Module):
             embedding_feature = 0
 
         self.channelexp = nn.ModuleList([
-            nn.ModuleList([R_trans(width_list[0], width_list[0], modes1_list[0], modes2_list[0], mlp=True), ]),
+            nn.ModuleList([R_trans(width_list[0], width_list[0], modes1_list[0], modes2_list[0], mlp=True),
+                           R_trans(width_list[0], width_list[0], modes1_list[0], modes2_list[0], mlp=True, act=False),
+                           ]),
         ])
         self.p = MLP(embedding_feature, width_list[0], width_list[0], dtype=torch.float)  # k_mat + Re
 
@@ -96,7 +98,8 @@ class R_transformations(nn.Module):
             self.channelexp.append(nn.ModuleList([
                 R_trans(width_list[i-1], width_list[i], modes1_list[i], modes2_list[i], mlp),
                 # R_trans(width_list[i], width_list[i], modes1_list[i], modes2_list[i], mlp),
-                R_trans(width_list[i], width_list[i-1], modes1_list[i], modes2_list[i], mlp, ), ]),)
+                R_trans(width_list[i], width_list[i-1], modes1_list[i], modes2_list[i], mlp),
+            ]),)
 
 
     def down_block(self, i, x1, skip_in, m1, m2):
@@ -167,7 +170,8 @@ class R_transformations(nn.Module):
 
         # first MLP
         x1 = (x + skip_in[0])
-        x1 = self.channelexp[0][0](x1)  # (width, mode)
+        x1 = self.channelexp[0][0](x1)
+        # (width, mode)
 
         x = [x1,]
         skip_out = [x1,]
@@ -183,6 +187,7 @@ class R_transformations(nn.Module):
             x[i-1] = self.up_add_corner(x[i], x[i-1], modes1_list[i], modes2_list[i])  # (width*2, mode/2)
 
         x = x[0]  # (width, mode)
+        x = self.channelexp[0][1](x)
         return x, skip_out
 
     def init_skip_in(self, x, modes1_list, modes2_list):
@@ -206,7 +211,7 @@ class R_transformations(nn.Module):
         k = k.reshape(1, 2, S1, modes2 + 1)
 
         # feature embedding
-        pow = torch.arange(start=-self.n_feature, end=self.n_feature, step=2, device=device).reshape(self.n_feature, 1, 1, 1) /self.n_feature
+        pow = torch.arange(start=-2*self.n_feature, end=0, step=2, device=device).reshape(self.n_feature, 1, 1, 1) /self.n_feature
         k_mat = torch.pow(k, pow)
         k_mat[:, 0, 0, :] = 0
         k_mat[:, 1, :, 0] = 0
@@ -215,8 +220,9 @@ class R_transformations(nn.Module):
         return k_mat
 
     def embed_re(self, re, S1, S2):
-        pow = torch.arange(start=-self.n_feature, end=self.n_feature, step=2, device=re.device).reshape(1, self.n_feature, 1, 1) /self.n_feature
-        re_mat = torch.pow(re, pow).repeat(1,1, S1, S2 // 2 +1)
+        pow = torch.arange(start=-2*self.n_feature, end=0, step=2, device=re.device).reshape(1, self.n_feature, 1, 1) /self.n_feature
+        re_mat = torch.pow(re, pow)
+        re_mat = re_mat.repeat(1,1, S1, S2 // 2 +1)
         return re_mat
 
 class MLP(nn.Module):
@@ -237,7 +243,7 @@ class MLP(nn.Module):
 class FNO_U(nn.Module):
     def __init__(self, modes1_list, modes2_list, width_list, level, mlp,
                  scale_informed=True, frequency_pos_emb=True,
-                 depth=3, in_channel=9, out_channel=1, n_feature=16, boundary=False):
+                 depth=3, in_channel=9, out_channel=1, n_feature=16, boundary=False, re_log=False):
         super(FNO_U, self).__init__()
 
         """
@@ -266,20 +272,20 @@ class FNO_U(nn.Module):
         self.boundary = boundary
         self.scale_informed = scale_informed
         self.frequency_pos_emb = frequency_pos_emb
+        self.re_log = re_log
 
         self.p = MLP(self.in_c, self.width, self.width) # input channel is 3: (a(x, y), x, y)
 
         self.R = nn.ModuleList([])
         self.mlp = nn.ModuleList([])
-        self.w = nn.ModuleList([])
+        # self.w = nn.ModuleList([])
         self.norm1 = nn.ModuleList([])
         self.norm2 = nn.ModuleList([])
         for l in range(self.depth):
             self.R.append(R_transformations(self.width_list, self.modes1_list, self.modes2_list, level, mlp, self.n_feature,
                                             scale_informed=self.scale_informed, frequency_pos_emb=self.frequency_pos_emb,))
             self.mlp.append(MLP(self.width, self.width, self.width))
-            # self.mlp.append(Local(self.width, self.width, self.width, in_shape=self.modes1_list[0]*2))
-            self.w.append(nn.Conv2d(self.width, self.width, 1))
+            # self.w.append(nn.Conv2d(self.width, self.width, 1))
             self.norm1.append(nn.GroupNorm(1, self.width))
             self.norm2.append(nn.GroupNorm(1, self.width))
 
@@ -292,6 +298,8 @@ class FNO_U(nn.Module):
             x = torch.cat([x[:, :1], x[:, 1:] / std], dim=1)
         if re==None:
             re = torch.ones(x.shape[0], device=x.device)
+        if self.re_log:
+            re = torch.log(re)
 
         S1, S2 = x.shape[2], x.shape[3]
         # self.S1_extended, self.S2_extended = S1+int(np.ceil((S1-2)/self.pad)), S2+int(np.ceil((S2-2)/self.pad))
@@ -301,19 +309,14 @@ class FNO_U(nn.Module):
         x = torch.cat((x, grid), dim=1) # 1 is the channel dimension
         x = self.p(x)
 
-        # first fno block
         skip = None
-
         for i in range(self.depth):
-            x1 = self.w[i](x)
-            x = self.norm1[i](x)
             x_ft = torch.fft.rfft2(x, dim=[2,3], norm="backward")
             x_ft, skip = self.R[i](x_ft, re, S1, S2, skip)
-            x = torch.fft.irfftn(x_ft, s=(S1, S2), norm="backward")
-            x = self.norm2[i](x)
+            x2 = torch.fft.irfftn(x_ft, s=(S1, S2), norm="backward")
+            x = self.norm1[i](x + x2)
             x2 = self.mlp[i](x)
-            x = x1 + x2
-            x = F.gelu(x)
+            x = self.norm2[i](x + x2)
 
         x = self.q(x)
 

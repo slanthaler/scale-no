@@ -2,8 +2,6 @@ import sys
 import wandb
 import argparse
 
-# sys.path.append("/central/groups/astuart/zongyi/symmetry-no/")
-#
 from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
 from symmetry_no.config_helper import ReadConfig
 from symmetry_no.wandb_utilities import *
@@ -12,6 +10,8 @@ from symmetry_no.models.fno2d_doubled import *
 from symmetry_no.models.fno_u import *
 from symmetry_no.models.fno_re import *
 from symmetry_no.models.unet import UNet2d
+from symmetry_no.models.CNO_original.CNOModule import CNO
+from symmetry_no.models.CNO import CNO2d
 from symmetry_no.selfconsistency import LossSelfconsistency
 from symmetry_no.super_sample import sample_Darcy
 from symmetry_no.data_augmentation import RandomFlip
@@ -34,6 +34,7 @@ def main(config):
         n_train = config.n_train
         n_test = config.n_test
         in_channel = 5
+        out_channel = 1
 
     elif config.dataset == 'helmholtz':
         print('Loading Helmholtz datasets...')
@@ -57,9 +58,27 @@ def main(config):
     width = config.width
     depth = config.depth
     modes = config.modes
+    # mlp = config.mlp
 
-    # model = FNO2d(modes, modes, width, depth, in_channel=in_channel, boundary=True).to(device)
-    model = FNO2d_doubled(modes, modes, width, depth).to(device)
+    if config.model == "Unet" or config.model == "UNet":
+        model = UNet2d(in_dim=in_channel, out_dim=out_channel, latent_size=S).to(device)
+    elif config.model == "FNO":
+        model = FNO2d(modes, modes, width, depth, in_channel=in_channel, out_channel=out_channel, boundary=True).to(device)
+    elif config.model == "CNO" or config.model == "CNO":
+        model = CNO2d(in_dim=5,  # Number of input channels.
+                    out_dim=1,  # Number of input channels.
+                    size=128,  # Input and Output spatial size (required )
+                    N_layers=5,  # Number of (D) or (U) blocks in the network
+                    N_res=4,  # Number of (R) blocks per level (except the neck)
+                    N_res_neck=4,  # Number of (R) blocks in the neck
+                    channel_multiplier=32,  # How the number of channels evolve?
+                    use_bn=True,
+                    boundary=True,
+                    N_Fourier_F=20,
+                      ).to(device)
+    else:
+        raise NotImplementedError("model not implement")
+    print('FNO2d parameter count: ', count_params(model))
 
     batch_size = config.batch_size
     epochs = config.epochs
@@ -81,7 +100,7 @@ def main(config):
 
     loss_fn = LpLoss(size_average=False)
     loss_mse = nn.MSELoss(reduction='sum')
-    group_action = RandomFlip()
+    # group_action = RandomFlip()
     for epoch in range(0, epochs + 1):  # config.epochs
         #
         model.train()
@@ -107,7 +126,7 @@ def main(config):
             # augmentation via sub-sampling
             for j in range(augmentation_samples):
                 if use_augmentation:
-                    loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, group_action=group_action)
+                    loss_aug = LossSelfconsistency(model, x, loss_fn, y=y)
                     loss += 1.0 * loss_aug
                     train_aug += loss_aug.item()
 
@@ -164,16 +183,17 @@ if __name__ == '__main__':
     # group = parser.add_mutually_exclusive_group()
     parser.add_argument('-n', "--name",
                         type=str,
-                        default='darcy_sc',
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,
+                        default='config/darcy/config_darcy_CNO_aug.yaml',
                         help="Specify the full config-file path.")
     parser.add_argument('--nowandb', action='store_true')
     args = parser.parse_args()
 
     # set wandb to false if nowandb is set
-    args.wandb = not args.nowandb
+    # args.wandb = not args.nowandb
+    args.wandb = False
 
     # read the config file
     config = ReadConfig(args.name, args.config)

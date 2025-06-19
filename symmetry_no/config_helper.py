@@ -74,6 +74,7 @@ def ReadConfig(name,config_file):
         config_file = ROOT_DIR + '/config/config_' + name + '.yaml'
     
     yaml = YAML()
+
     with open(config_file, "r") as f:
         config_user = yaml.load(f)
     # 

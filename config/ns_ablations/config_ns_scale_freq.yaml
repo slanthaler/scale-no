@@ -6,8 +6,8 @@ run_name: 'NS, scale, freq'
 dataset: 'NS'
 # fno2d
 modes: 32
-width: 32
-depth: 4
+width: 64
+depth: 2
 mlp: True
 scale_informed: True
 frequency_pos_emb: True
@@ -17,7 +17,7 @@ learning_rate: 1e-3
 weight_decay: 1e-4
 
 batch_size: 10
-epochs: 201
+epochs: 101
 
 model: "FNO_re" # "UNet", "FNO", "FNO_re"
 n_train: 50
@@ -36,7 +36,6 @@ sub_t: 1
 #grid_size: 128
 
 # datasets
-#data_dir: '/media/wumming/HHD/HHD_data/KF'
 data_dir: '/central/groups/tensorlab/zongyi/KF'
 
 train_data: 'KF_f0_Re1000_N60_T300_S256_train.pt'

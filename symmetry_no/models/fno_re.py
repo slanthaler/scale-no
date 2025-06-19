@@ -50,8 +50,8 @@ class SpectralConv2d(nn.Module):
 
         self.p = MLP(embedding_feature, in_channels, in_channels, dtype=torch.float)  # k_mat (2* feature) + Re (feature)
 
-        self.norm1 = nn.GroupNorm(1, in_channels)
-        self.norm2 = nn.GroupNorm(1, out_channels)
+        # self.norm1 = nn.GroupNorm(1, in_channels)
+        # self.norm2 = nn.GroupNorm(1, out_channels)
 
         # in_channels = in_channels + 2*self.n_feature + self.n_feature
         self.scale = (1 / (in_channels * out_channels))
@@ -87,21 +87,24 @@ class SpectralConv2d(nn.Module):
         k = k.reshape(1, 2, S1, modes2 + 1)
 
         # feature embedding
-        pow = torch.arange(start=-self.n_feature, end=self.n_feature, step=2, device=device).reshape(self.n_feature, 1, 1, 1) /self.n_feature
+        pow = torch.arange(start=-2 * self.n_feature, end=0, step=2, device=device).reshape(self.n_feature, 1, 1,
+                                                                                            1) / self.n_feature
         k_mat = torch.pow(k, pow)
         k_mat[:, 0, 0, :] = 0
         k_mat[:, 1, :, 0] = 0
-        k_mat = k_mat.reshape(1, 2*self.n_feature, S1, modes2 + 1).repeat(batchsize, 1,1,1)
+        k_mat = k_mat.reshape(1, 2 * self.n_feature, S1, modes2 + 1).repeat(batchsize, 1, 1, 1)
         k_mat.requires_grad = False
         return k_mat
 
     def embed_re(self, re, S1, S2):
-        pow = torch.arange(start=-self.n_feature, end=self.n_feature, step=2, device=re.device).reshape(1, self.n_feature, 1, 1) /self.n_feature
-        re_mat = torch.pow(re, pow).repeat(1,1, S1, S2 // 2 +1)
+        pow = torch.arange(start=-2 * self.n_feature, end=0, step=2, device=re.device).reshape(1, self.n_feature, 1,
+                                                                                               1) / self.n_feature
+        re_mat = torch.pow(re, pow)
+        re_mat = re_mat.repeat(1, 1, S1, S2 // 2 + 1)
         return re_mat
 
     def forward(self, x, Re):
-        x = self.norm1(x)
+        # x = self.norm1(x)
 
         batchsize, C, Nx, Ny = x.shape
         # Compute Fourier coeffcients up to factor of e^(- something constant)
@@ -157,7 +160,7 @@ class SpectralConv2d(nn.Module):
         if self.sub > 0:
             x = x[:,:,:Nx,:Ny]
 
-        x = self.norm2(x)
+        # x = self.norm2(x)
         return x
 
 
@@ -179,7 +182,7 @@ class MLP(nn.Module):
 class FNO_mlp(nn.Module):
     def __init__(self, width, modes1=0, modes2=0, depth=4, in_channel=7,
                  scale_informed=True, frequency_pos_emb=True, grid_feature=False,
-                 out_channel=1, sub=4, n_feature=10, boundary=False, mlp=False):
+                 out_channel=1, sub=4, n_feature=10, boundary=False, mlp=False, re_log=False):
         super(FNO_mlp, self).__init__()
 
         """
@@ -202,6 +205,7 @@ class FNO_mlp(nn.Module):
 
         self.scale_informed = scale_informed
         self.frequency_pos_emb = frequency_pos_emb
+        self.re_log = re_log
 
         self.n_feature = n_feature
         self.sub = sub
@@ -218,13 +222,16 @@ class FNO_mlp(nn.Module):
         self.conv = []
         self.mlp = []
         self.w = []
+        self.norm1 = nn.ModuleList([])
+        self.norm2 = nn.ModuleList([])
         for _ in range(depth):
             self.conv.append(SpectralConv2d(self.width, self.width, self.width, modes1, modes2,
                                             scale_informed=self.scale_informed, frequency_pos_emb=self.frequency_pos_emb,
                                             n_feature=self.n_feature, sub=sub, mlp=mlp))
             self.mlp.append(MLP(self.width, self.width, self.width))
             self.w.append(nn.Conv2d(self.width, self.width, 1))
-            # self.w.append(nn.Conv2d(self.width, self.width, 3, padding="same"))
+            self.norm1.append(nn.GroupNorm(1, self.width))
+            self.norm2.append(nn.GroupNorm(1, self.width))
         #
         self.conv = nn.ModuleList(self.conv)
         self.mlp = nn.ModuleList(self.mlp)
@@ -244,6 +251,8 @@ class FNO_mlp(nn.Module):
 
         if re==None:
             re = torch.ones(x.shape[0], 1, device=x.device)
+        if self.re_log:
+            re = torch.log(re)
 
         re = re.reshape(-1, 1, 1, 1)
         grid, grid_re = self.get_grid(x.shape, re, x.device)
@@ -254,11 +263,10 @@ class FNO_mlp(nn.Module):
          x = x + self.p_re(grid_re)
 
         for i in range(self.depth):
-            x1 = self.conv[i](x, re)
-            x1 = self.mlp[i](x1)
-            x2 = self.w[i](x)
-            x = x1 + x2
-            x = F.gelu(x)
+            x2 = self.conv[i](x, re)
+            x = self.norm1[i](x + x2)
+            x2 = self.mlp[i](x)
+            x = self.norm2[i](x + x2)
 
         x = self.q(x)
         if self.boundary:

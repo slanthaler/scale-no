@@ -10,7 +10,7 @@ from symmetry_no.burgers_utilities import BurgersExtractBC
 
 import time
 
-def LossSelfconsistency(model,x,loss_fn,y=None,re=None,rate=None,new_y=None,size_min=32,type="darcy",plot=False,group_action=None,align_corner=False):
+def LossSelfconsistency(model,x,loss_fn,y=None,re=None,rate=None,new_y=None,size_min=64,type="darcy",plot=False,group_action=None,align_corner=False):
     """
     Selfconsistency loss:
 
