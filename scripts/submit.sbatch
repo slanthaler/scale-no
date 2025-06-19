@@ -1,10 +1,10 @@
 #!/bin/bash
 
-#SBATCH --time=00:30:00
+#SBATCH --time=12:00:00
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --gres gpu:1
-#SBATCH --job-name="test-0-0"
+#SBATCH --job-name="test-fno"
 #SBATCH --output=slurm-%x.%j.out
 #SBATCH --error=slurm-%x.%j.out
 #SBATCH --mail-user=slanth@caltech.edu

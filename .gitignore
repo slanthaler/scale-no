@@ -1,7 +1,14 @@
 *~
 \#*
 wandb/*
+model/*
+symmetry_no/wandb/*
 symmetry-no/__pycache__
+symmetry-no/.h5
+symmetry-no/.png
 *.cpython*
 *.egg-info
 config/wandb_api_key.txt
+*.h5
+*.png
+*.out
