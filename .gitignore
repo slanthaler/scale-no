@@ -2,10 +2,15 @@
 \#*
 wandb/*
 model/*
-symmetry_no/wandb/*
+symmetry-no/wandb/*
 symmetry-no/__pycache__
 symmetry-no/.h5
 symmetry-no/.png
+scale-no/wandb/*
+scale-no/__pycache__
+scale-no/.h5
+scale-no/.png
+*.idea
 *.cpython*
 *.egg-info
 config/wandb_api_key.txt
