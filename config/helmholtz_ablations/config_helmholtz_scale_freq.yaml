@@ -30,10 +30,7 @@ epoch_test: 10
 S: 256
 
 # datasets
-#data_dir: '/media/wumming/HHD/HHD_data/helmholtz/data'
 data_dir: '/central/groups/astuart/zongyi/helmholtz/data'
-
-
 
 train_data: [
 'helmholtz_BC_k5_lognormal_amin0.0_amax0.0_Nsamp1024_Ns65_alphacoeff1.50_alphag3.50.mat',
