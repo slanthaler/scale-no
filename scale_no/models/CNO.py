@@ -15,7 +15,7 @@ import torch.nn as nn
 import os
 import numpy as np
 import torch.nn.functional as F
-from symmetry_no.models.CNO_original.training.FourierFeatures import FourierFeatures
+from scale_no.models.CNO_original.training.FourierFeatures import FourierFeatures
 
 
 # CNO LReLu activation fucntion

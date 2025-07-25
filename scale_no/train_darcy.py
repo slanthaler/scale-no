@@ -2,19 +2,19 @@ import sys
 import wandb
 import argparse
 
-
-from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
-from symmetry_no.config_helper import ReadConfig
-from symmetry_no.wandb_utilities import *
-from symmetry_no.models.fno2d import *
-from symmetry_no.models.fno2d_doubled import *
-from symmetry_no.models.fno_u import *
-from symmetry_no.models.fno_re import *
-from symmetry_no.models.unet import UNet2d
-
-from symmetry_no.selfconsistency import LossSelfconsistency
-from symmetry_no.super_sample import sample_helm
-
+from scale_no.data_loader import DarcyData, HelmholtzData, NSData
+from scale_no.config_helper import ReadConfig
+from scale_no.wandb_utilities import *
+from scale_no.models.fno2d import *
+from scale_no.models.fno2d_doubled import *
+from scale_no.models.fno_u import *
+from scale_no.models.fno_re import *
+from scale_no.models.unet import UNet2d
+from scale_no.models.CNO_original.CNOModule import CNO
+from scale_no.models.CNO import CNO2d
+from scale_no.selfconsistency import LossSelfconsistency
+from scale_no.super_sample import sample_Darcy
+from scale_no.data_augmentation import RandomFlip
 
 def main(config):
     #
@@ -41,56 +41,44 @@ def main(config):
         data = HelmholtzData(config)
         n_train = config.n_train
         n_test = config.n_test
-        in_channel = 9 # complex input output
-        out_channel = 2
+        in_channel = 9
 
     elif config.dataset == 'NS':
         print('Loading NS datasets...')
         data = NSData(config)
         n_train = config.n_train * config.T
         n_test = config.n_test * config.T
-        in_channel = 7
-        out_channel = 1
+        in_channel = config.T_in
 
     else:
         print("config.dataset should be either 'darcy' or 'NS'.")
 
     # Initialize our model, recursively go over all modules and convert their parameters and buffers to CUDA tensors (if device is set to cuda)
-    modes1 = config.modes
-    modes2 = config.modes
+
     width = config.width
     depth = config.depth
-    mlp = config.mlp
-    scale_informed = config.scale_informed
-    frequency_pos_emb = config.frequency_pos_emb
-    print(f"Width: {width}, Depth: {depth}, Modes: {modes1}, Scale Informed: {scale_informed}, Frequency Pos Emb: {frequency_pos_emb}")
-
-
-    ### U-shape FNO
-    S = config.S
-    modes = modes1
-    modes_list = []
-    width_list = []
-    for i in range(10):
-        n = 2**i
-        modes_list.append(modes//n)
-        width_list.append(n*width)
+    modes = config.modes
+    # mlp = config.mlp
 
     if config.model == "Unet" or config.model == "UNet":
         model = UNet2d(in_dim=in_channel, out_dim=out_channel, latent_size=S).to(device)
     elif config.model == "FNO":
-        model = FNO2d(modes1, modes2, width, depth, in_channel=in_channel, out_channel=out_channel, boundary=True).to(device)
-    elif config.model == "FNO_u":
-        model = FNO_U(modes_list, modes_list, width_list, level=config.level, depth=depth, mlp=mlp, in_channel=in_channel,
-                      out_channel=out_channel, boundary=True, re_log=False).to(device)
-    elif config.model == "FNO_re":
-        model = FNO_mlp(width, modes1, modes2, depth, scale_informed=scale_informed, frequency_pos_emb=frequency_pos_emb,
-                        mlp=mlp, in_channel=in_channel, out_channel=out_channel, sub=0, grid_feature=0, boundary=True, re_log=False).to(device)
+        model = FNO2d(modes, modes, width, depth, in_channel=in_channel, out_channel=out_channel, boundary=True).to(device)
+    elif config.model == "CNO" or config.model == "CNO":
+        model = CNO2d(in_dim=5,  # Number of input channels.
+                    out_dim=1,  # Number of input channels.
+                    size=128,  # Input and Output spatial size (required )
+                    N_layers=5,  # Number of (D) or (U) blocks in the network
+                    N_res=4,  # Number of (R) blocks per level (except the neck)
+                    N_res_neck=4,  # Number of (R) blocks in the neck
+                    channel_multiplier=32,  # How the number of channels evolve?
+                    use_bn=True,
+                    boundary=True,
+                    N_Fourier_F=20,
+                      ).to(device)
     else:
         raise NotImplementedError("model not implement")
     print('FNO2d parameter count: ', count_params(model))
-
-    # model.load_state_dict(torch.load("helm_model_refno.h5"))
 
     batch_size = config.batch_size
     epochs = config.epochs
@@ -100,7 +88,7 @@ def main(config):
     augmentation_samples = config.augmentation_samples
     sample_virtual_instance = config.sample_virtual_instance
 
-    augmentation_loss = config.augmentation_loss
+    use_augmentation = config.augmentation_loss
     iterations = epochs * max(1, n_train // batch_size)
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=iterations)
@@ -111,6 +99,8 @@ def main(config):
         wandb.watch(model, log_freq=20, log="all")
 
     loss_fn = LpLoss(size_average=False)
+    loss_mse = nn.MSELoss(reduction='sum')
+    # group_action = RandomFlip()
     for epoch in range(0, epochs + 1):  # config.epochs
         #
         model.train()
@@ -120,56 +110,54 @@ def main(config):
         train_sc = 0
 
         # training loop
-        for i, train_loader in enumerate(data.train_loaders):
-            for d in train_loader:
-                x, y, re = d
-                x, y, re = x.to(device), y.to(device), re.to(device)
+        for d in data.train_loader:
+            x, y = d['train']
+            x, y = x.to(device), y.to(device)
+            # x, y = group_action(x, y)
 
-                # supervised training
-                optimizer.zero_grad()
-                out = model(x, re)
-                # DO WE NEED TO NORMALIZE THE OUTPUT??
+            # supervised training
+            optimizer.zero_grad()
+            out = model(x)
+            # DO WE NEED TO NORMALIZE THE OUTPUT??
 
-                loss = loss_fn(out.view(batch_size, -1), y.view(batch_size, -1))
-                train_l2 += loss.item()
+            loss = loss_fn(out.reshape(batch_size, -1), y.reshape(batch_size, -1))
+            train_l2 += loss.item()
 
-                # augmentation via sub-sampling
-                for j in range(augmentation_samples):
-                    if augmentation_loss:
-                        loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re, size_min=16, type="helmholtz")
-                        loss += augmentation_loss * loss_aug
-                        train_aug += loss_aug.item()
+            # augmentation via sub-sampling
+            for j in range(augmentation_samples):
+                if use_augmentation:
+                    loss_aug = LossSelfconsistency(model, x, loss_fn, y=y)
+                    loss += 1.0 * loss_aug
+                    train_aug += loss_aug.item()
 
-                    if sample_virtual_instance and (epoch >= start_selfcon):
-                        # rate = 1 + torch.rand(1)
-                        rate = 1
-                        new_x, rate, new_y = sample_helm(input=x, output=y, rate=rate, keepsize=1)
-                        # new_x, new_y = x, y
-                        new_re = re * rate
-                        loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re, type="helmholtz", align_corner=False)
-                        loss += 0.2 * loss_sc
-                        train_sc += loss_sc.item()
+                if sample_virtual_instance and (epoch >= start_selfcon):
+                    rate = torch.rand(1) * 3 + 1
+                    new_x, rate = sample_Darcy(input=x, rate=rate, keepsize=True)
+                    loss_sc = LossSelfconsistency(model, new_x, loss_fn)
+                    loss += 0.25 * loss_sc * (epoch / epochs)
+                    train_sc += loss_sc.item()
 
-                loss.backward()
-                optimizer.step()
-                scheduler.step()
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
 
+        #
         model.eval()
         test_l2 = np.zeros((len(data.test_loaders),))
         if epoch % epoch_test == 0:
             with torch.no_grad():
                 for i, test_loader in enumerate(data.test_loaders):
-                    for x, y, re in test_loader:
-                        x, y, re = x.to(device), y.to(device), re.to(device)
+                    for x, y in test_loader:
+                        x, y = x.to(device), y.to(device)
 
-                        out = model(x, re)
+                        out = model(x)
                         # DO WE NEED TO NORMALIZE THE OUTPUT??
                         test_l2[i] += loss_fn(out.view(batch_size, -1), y.view(batch_size, -1)).item()
 
         # normalize losses
-        train_l2 /= (n_train * len(data.train_loaders))
-        train_sc /= (n_train * len(data.train_loaders) * augmentation_samples)
-        train_aug /= (n_train * len(data.train_loaders) * augmentation_samples)
+        train_l2 /= (n_train )
+        train_sc /= (n_train * augmentation_samples)
+        train_aug /= (n_train * augmentation_samples)
         test_l2 /= n_test
 
         t2 = default_timer()
@@ -182,11 +170,9 @@ def main(config):
             flush=True)
 
     #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
-    # if args.wandb:
-    torch.save(model.state_dict(), "helm_model_sino_aug.pt")
-    print("model saved")
-    # wandb.save('../model.h5')
-
+    if args.wandb:
+        torch.save(model.state_dict(), "model.h5")
+    wandb.save('model.h5')
 
 
 #
@@ -200,7 +186,7 @@ if __name__ == '__main__':
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,
-                        default='config/helmholtz_ablations/config_helmholtz_scale_freq.yaml',
+                        default='config/darcy/config_darcy_CNO_aug.yaml',
                         help="Specify the full config-file path.")
     parser.add_argument('--nowandb', action='store_true')
     args = parser.parse_args()
@@ -217,7 +203,7 @@ if __name__ == '__main__':
         wandb.login(key=get_wandb_api_key())
         wandb.init(project="Symmetry-NO",
                    name=config.run_name,
-                   group="Helmholtz",
+                   group="Darcy",
                    config=config)
 
     #

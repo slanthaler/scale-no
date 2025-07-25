@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 # matplotlib.use('TkAgg')
-from symmetry_no.data_augmentation import RandomCropResize, RandomCropResizeTime, RandomCropResizeTimeAR
-from symmetry_no.darcy_utilities import DarcyExtractBC
-from symmetry_no.helmholtz_utilities import HelmholtzExtractBC
-from symmetry_no.burgers_utilities import BurgersExtractBC
+from scale_no.data_augmentation import RandomCropResize, RandomCropResizeTime, RandomCropResizeTimeAR
+from scale_no.pde_utilities.darcy_utilities import DarcyExtractBC
+from scale_no.pde_utilities.helmholtz_utilities import HelmholtzExtractBC
+from scale_no.pde_utilities.burgers_utilities import BurgersExtractBC
 
 import time
 

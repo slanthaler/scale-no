@@ -1,7 +1,7 @@
 from ruamel.yaml import YAML
 from argparse import Namespace 
 
-from symmetry_no.rootdir import ROOT_DIR
+from scale_no.rootdir import ROOT_DIR
 
 # taken from [ https://dev.to/taqkarim/extending-simplenamespace-for-nested-dictionaries-58e8 ]
 class RecursiveNamespace(Namespace):

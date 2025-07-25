@@ -1,4 +1,4 @@
-from symmetry_no.rootdir import ROOT_DIR
+from scale_no.rootdir import ROOT_DIR
 
 def wandb_login(api_key_file=ROOT_DIR + "/config/wandb_api_key.txt", key=None):
     if key is None:

@@ -1,20 +1,22 @@
 import sys
 import wandb
 import argparse
+import time
+import matplotlib
+import matplotlib.pyplot as plt
 
-from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData
-from symmetry_no.config_helper import ReadConfig
-from symmetry_no.wandb_utilities import *
-from symmetry_no.models.fno2d import *
-from symmetry_no.models.fno2d_doubled import *
-from symmetry_no.models.fno_u import *
-from symmetry_no.models.fno_re import *
-from symmetry_no.models.unet import UNet2d
-from symmetry_no.models.CNO_original.CNOModule import CNO
-from symmetry_no.models.CNO import CNO2d
-from symmetry_no.selfconsistency import LossSelfconsistency
-from symmetry_no.super_sample import sample_Darcy
-from symmetry_no.data_augmentation import RandomFlip
+
+from scale_no.data_loader import DarcyData, HelmholtzData, NSData, BurgersData
+from scale_no.config_helper import ReadConfig
+from scale_no.wandb_utilities import *
+from scale_no.models.fno2d import *
+from scale_no.models.fno2d_doubled import *
+from scale_no.models.fno_u import *
+from scale_no.models.fno_re import *
+from scale_no.models.unet import UNet2d
+from scale_no.selfconsistency import LossSelfconsistency
+from scale_no.super_sample import sample_Darcy
+from scale_no.data_augmentation import RandomFlip
 
 def main(config):
     #
@@ -34,7 +36,13 @@ def main(config):
         n_train = config.n_train
         n_test = config.n_test
         in_channel = 5
-        out_channel = 1
+
+    elif config.dataset == 'burgers':
+        print('Loading Burgers datasets...')
+        data = BurgersData(config)
+        n_train = config.n_train
+        n_test = config.n_test
+        in_channel = 3
 
     elif config.dataset == 'helmholtz':
         print('Loading Helmholtz datasets...')
@@ -58,27 +66,14 @@ def main(config):
     width = config.width
     depth = config.depth
     modes = config.modes
-    # mlp = config.mlp
+    scale_informed = config.scale_informed
+    frequency_pos_emb = config.frequency_pos_emb
+    print(f"Width: {width}, Depth: {depth}, Modes: {modes}, Scale Informed: {scale_informed}, Frequency Pos Emb: {frequency_pos_emb}")
 
-    if config.model == "Unet" or config.model == "UNet":
-        model = UNet2d(in_dim=in_channel, out_dim=out_channel, latent_size=S).to(device)
-    elif config.model == "FNO":
-        model = FNO2d(modes, modes, width, depth, in_channel=in_channel, out_channel=out_channel, boundary=True).to(device)
-    elif config.model == "CNO" or config.model == "CNO":
-        model = CNO2d(in_dim=5,  # Number of input channels.
-                    out_dim=1,  # Number of input channels.
-                    size=128,  # Input and Output spatial size (required )
-                    N_layers=5,  # Number of (D) or (U) blocks in the network
-                    N_res=4,  # Number of (R) blocks per level (except the neck)
-                    N_res_neck=4,  # Number of (R) blocks in the neck
-                    channel_multiplier=32,  # How the number of channels evolve?
-                    use_bn=True,
-                    boundary=True,
-                    N_Fourier_F=20,
-                      ).to(device)
-    else:
-        raise NotImplementedError("model not implement")
-    print('FNO2d parameter count: ', count_params(model))
+    model = FNO_mlp(modes1=16, modes2=modes, width=width, depth=depth, in_channel=in_channel,
+                    scale_informed=scale_informed, frequency_pos_emb=frequency_pos_emb, 
+                    sub=0, boundary=False).to(device)
+    # model = FNO2d(modes1=16, modes2=modes, width=width, depth=depth, in_channel=in_channel, boundary=False).to(device)
 
     batch_size = config.batch_size
     epochs = config.epochs
@@ -100,7 +95,6 @@ def main(config):
 
     loss_fn = LpLoss(size_average=False)
     loss_mse = nn.MSELoss(reduction='sum')
-    # group_action = RandomFlip()
     for epoch in range(0, epochs + 1):  # config.epochs
         #
         model.train()
@@ -111,30 +105,28 @@ def main(config):
 
         # training loop
         for d in data.train_loader:
-            x, y = d['train']
-            x, y = x.to(device), y.to(device)
-            # x, y = group_action(x, y)
+            x, y, re = d['train']
+            x, y, re = x.to(device), y.to(device), re.to(device)
 
             # supervised training
             optimizer.zero_grad()
-            out = model(x)
-            # DO WE NEED TO NORMALIZE THE OUTPUT??
+            out = model(x, re)
 
-            loss = loss_fn(out.reshape(batch_size, -1), y.reshape(batch_size, -1))
+            loss = loss_fn(out, y)
             train_l2 += loss.item()
 
             # augmentation via sub-sampling
             for j in range(augmentation_samples):
                 if use_augmentation:
-                    loss_aug = LossSelfconsistency(model, x, loss_fn, y=y)
+                    loss_aug = LossSelfconsistency(model, x, loss_fn, y=y, re=re, type=config.dataset)
                     loss += 1.0 * loss_aug
                     train_aug += loss_aug.item()
 
                 if sample_virtual_instance and (epoch >= start_selfcon):
-                    rate = torch.rand(1) * 3 + 1
-                    new_x, rate = sample_Darcy(input=x, rate=rate, keepsize=True)
-                    loss_sc = LossSelfconsistency(model, new_x, loss_fn)
-                    loss += 0.25 * loss_sc * (epoch / epochs)
+                    rate = torch.pow(2, torch.rand(1, device=device, requires_grad=False))
+                    new_re = re * rate
+                    loss_sc = LossSelfconsistency(model, x, loss_fn, re=new_re, rate=rate.item(), type=config.dataset)
+                    loss += 0.2 * loss_sc
                     train_sc += loss_sc.item()
 
             loss.backward()
@@ -147,18 +139,21 @@ def main(config):
         if epoch % epoch_test == 0:
             with torch.no_grad():
                 for i, test_loader in enumerate(data.test_loaders):
-                    for x, y in test_loader:
-                        x, y = x.to(device), y.to(device)
+                    for x, y, re in test_loader:
+                        x, y, re = x.to(device), y.to(device), re.to(device)
 
-                        out = model(x)
+                        out = model(x, re)
+                        # out = out + x[:, -1:]
                         # DO WE NEED TO NORMALIZE THE OUTPUT??
-                        test_l2[i] += loss_fn(out.view(batch_size, -1), y.view(batch_size, -1)).item()
+                        test_l2[i] += loss_fn.truncated(out, y).item()
+                        # test_l2[i] += loss_fn.rel_i(out, y, x[:, 0:1]).item()
 
         # normalize losses
-        train_l2 /= (n_train )
-        train_sc /= (n_train * augmentation_samples)
-        train_aug /= (n_train * augmentation_samples)
+        train_l2 /= n_train
+        train_sc /= n_train
+        train_aug /= n_train
         test_l2 /= n_test
+
 
         t2 = default_timer()
         if args.wandb:
@@ -171,7 +166,7 @@ def main(config):
 
     #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
     if args.wandb:
-        torch.save(model.state_dict(), "model.h5")
+        torch.save(model.state_dict(), "burgers_model.h5")
     wandb.save('model.h5')
 
 
@@ -186,13 +181,13 @@ if __name__ == '__main__':
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,
-                        default='config/darcy/config_darcy_CNO_aug.yaml',
+                        default='config/burgers/config_burgers.yaml',
                         help="Specify the full config-file path.")
     parser.add_argument('--nowandb', action='store_true')
     args = parser.parse_args()
 
     # set wandb to false if nowandb is set
-    # args.wandb = not args.nowandb
+    args.wandb = not args.nowandb
     args.wandb = False
 
     # read the config file
@@ -203,7 +198,7 @@ if __name__ == '__main__':
         wandb.login(key=get_wandb_api_key())
         wandb.init(project="Symmetry-NO",
                    name=config.run_name,
-                   group="Darcy",
+                   group="Burgers",
                    config=config)
 
     #

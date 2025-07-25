@@ -18,7 +18,7 @@ source /groups/astuart/slanth/miniconda3/etc/profile.d/conda.sh
 conda activate ml
 
 # run code
-python ../../symmetry-no/train.py -c ./config.yaml
+python ../../scale-no/train.py -c ./config.yaml
 
 #
 echo done

@@ -1,22 +1,19 @@
 import sys
 import wandb
 import argparse
-import time
-import matplotlib
-import matplotlib.pyplot as plt
 
-
-from symmetry_no.data_loader import DarcyData, HelmholtzData, NSData, BurgersData
-from symmetry_no.config_helper import ReadConfig
-from symmetry_no.wandb_utilities import *
-from symmetry_no.models.fno2d import *
-from symmetry_no.models.fno2d_doubled import *
-from symmetry_no.models.fno_u import *
-from symmetry_no.models.fno_re import *
-from symmetry_no.models.unet import UNet2d
-from symmetry_no.selfconsistency import LossSelfconsistency
-from symmetry_no.super_sample import sample_Darcy
-from symmetry_no.data_augmentation import RandomFlip
+from scale_no.data_loader import DarcyData, HelmholtzData, NSData
+from scale_no.config_helper import ReadConfig
+from scale_no.wandb_utilities import *
+from scale_no.models.fno2d import *
+from scale_no.models.fno2d_doubled import *
+from scale_no.models.fno_u import *
+from scale_no.models.fno_re import *
+from scale_no.models.CNO import CNO
+from scale_no.models.unet import UNet2d
+from scale_no.selfconsistency import LossSelfconsistency
+from scale_no.super_sample import sample_NS
+from scale_no.data_augmentation import RandomFlip
 
 def main(config):
     #
@@ -35,21 +32,14 @@ def main(config):
         data = DarcyData(config)
         n_train = config.n_train
         n_test = config.n_test
-        in_channel = 5
-
-    elif config.dataset == 'burgers':
-        print('Loading Burgers datasets...')
-        data = BurgersData(config)
-        n_train = config.n_train
-        n_test = config.n_test
-        in_channel = 3
+        in_channel = 1
 
     elif config.dataset == 'helmholtz':
         print('Loading Helmholtz datasets...')
         data = HelmholtzData(config)
         n_train = config.n_train
         n_test = config.n_test
-        in_channel = 9
+        in_channel = 2
 
     elif config.dataset == 'NS':
         print('Loading NS datasets...')
@@ -62,18 +52,34 @@ def main(config):
         print("config.dataset should be either 'darcy' or 'NS'.")
 
     # Initialize our model, recursively go over all modules and convert their parameters and buffers to CUDA tensors (if device is set to cuda)
-
+    modes = config.modes
     width = config.width
     depth = config.depth
-    modes = config.modes
+    mlp = config.mlp
     scale_informed = config.scale_informed
     frequency_pos_emb = config.frequency_pos_emb
     print(f"Width: {width}, Depth: {depth}, Modes: {modes}, Scale Informed: {scale_informed}, Frequency Pos Emb: {frequency_pos_emb}")
 
-    model = FNO_mlp(modes1=16, modes2=modes, width=width, depth=depth, in_channel=in_channel,
-                    scale_informed=scale_informed, frequency_pos_emb=frequency_pos_emb, 
-                    sub=0, boundary=False).to(device)
-    # model = FNO2d(modes1=16, modes2=modes, width=width, depth=depth, in_channel=in_channel, boundary=False).to(device)
+    ### U-shape FNO
+    modes_list = []
+    width_list = []
+    for i in range(5):
+        # n = 2**i
+        modes_list.append(modes//(2**i))
+        width_list.append(width*int(np.sqrt(2)**i))
+
+    if config.model == "FNO_re":
+        model = FNO_mlp(modes1=modes, modes2=modes, width=width, depth=depth, in_channel=in_channel,
+                    scale_informed=scale_informed, frequency_pos_emb=frequency_pos_emb,
+                    mlp=mlp, sub=0, boundary=False).to(device)
+    elif config.model == "FNO_u":
+        model = FNO_U(modes_list, modes_list, width_list, level=config.level, depth=depth, mlp=mlp,
+                      scale_informed=scale_informed, frequency_pos_emb=frequency_pos_emb,
+                      in_channel=in_channel, out_channel=1, re_log=True).to(device)
+    else:
+        raise NotImplementedError("model not implement")
+
+    print('Model parameter count: ', count_params(model))
 
     batch_size = config.batch_size
     epochs = config.epochs
@@ -94,7 +100,9 @@ def main(config):
         wandb.watch(model, log_freq=20, log="all")
 
     loss_fn = LpLoss(size_average=False)
-    loss_mse = nn.MSELoss(reduction='sum')
+    ExtractBD = lambda x, y: x
+    group_action = RandomFlip(ExtractBC=ExtractBD)
+
     for epoch in range(0, epochs + 1):  # config.epochs
         #
         model.train()
@@ -107,10 +115,13 @@ def main(config):
         for d in data.train_loader:
             x, y, re = d['train']
             x, y, re = x.to(device), y.to(device), re.to(device)
+            # x, y = group_action(x, y)
+            # y = y - x[:,-1] # learn the residual
 
             # supervised training
             optimizer.zero_grad()
             out = model(x, re)
+            # DO WE NEED TO NORMALIZE THE OUTPUT??
 
             loss = loss_fn(out, y)
             train_l2 += loss.item()
@@ -123,10 +134,13 @@ def main(config):
                     train_aug += loss_aug.item()
 
                 if sample_virtual_instance and (epoch >= start_selfcon):
-                    rate = torch.pow(2, torch.rand(1, device=device, requires_grad=False))
+                    rate = torch.pow(2, 3*(epoch/epochs)*torch.rand(1, device=device, requires_grad=False))
+                    # new_x, rate = sample_NS(input=x, rate=rate, keepsize=config.keepsize, sample_type=config.sample_type)
+                    new_x = x
                     new_re = re * rate
-                    loss_sc = LossSelfconsistency(model, x, loss_fn, re=new_re, rate=rate.item(), type=config.dataset)
-                    loss += 0.2 * loss_sc
+                    loss_sc = LossSelfconsistency(model, new_x, loss_fn, re=new_re, type=config.dataset)
+                    # loss_sc = torch.clamp(loss_sc, max=batch_size*0.2) # discard bad virtual instances
+                    loss += 0.25 * loss_sc
                     train_sc += loss_sc.item()
 
             loss.backward()
@@ -154,20 +168,14 @@ def main(config):
         train_aug /= n_train
         test_l2 /= n_test
 
-
         t2 = default_timer()
         if args.wandb:
-            wandb.log({'time': t2 - t1, 'train_l2': train_l2, 'train_selfcon': train_sc})
+            wandb.log({'time': t2 - t1, 'train_l2': train_l2, 'train_aug': train_aug})
             wandb.log({f"test_l2/loss-{ii}": loss for ii, loss in enumerate(test_l2)})
         test_losses = " / ".join([f"{val:.5f}" for val in test_l2])
         print(
             f'[{epoch:3}], time: {t2 - t1:.3f}, train: {train_l2:.5f}, test: {test_losses}, train_aug: {train_aug:.5f}, train_sc: {train_sc:.5f}',
             flush=True)
-
-    #    # WandB – Save the model checkpoint. This automatically saves a file to the cloud and associates it with the current run.
-    if args.wandb:
-        torch.save(model.state_dict(), "burgers_model.h5")
-    wandb.save('model.h5')
 
 
 #
@@ -181,14 +189,14 @@ if __name__ == '__main__':
                         help="Specify name of run (requires: config_<name>.yaml in ./config folder).")
     parser.add_argument('-c', "--config",
                         type=str,
-                        default='config/burgers/config_burgers.yaml',
+                        default='config/ns_ablations/config_ns_scale_freq_ufno.yaml',
                         help="Specify the full config-file path.")
     parser.add_argument('--nowandb', action='store_true')
     args = parser.parse_args()
 
     # set wandb to false if nowandb is set
     args.wandb = not args.nowandb
-    args.wandb = False
+    # args.wandb = False
 
     # read the config file
     config = ReadConfig(args.name, args.config)
@@ -198,7 +206,7 @@ if __name__ == '__main__':
         wandb.login(key=get_wandb_api_key())
         wandb.init(project="Symmetry-NO",
                    name=config.run_name,
-                   group="Burgers",
+                   group="NS",
                    config=config)
 
     #
