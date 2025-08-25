@@ -8,7 +8,6 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from disco_conv import EquidistantDiscreteContinuousConv2d
 
 torch.manual_seed(0)
 np.random.seed(0)

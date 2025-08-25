@@ -71,8 +71,8 @@ class GaussianRF(object):
 
 
 
-from symmetry_no.helmholtz_utilities import HelmholtzExtractBC
-from symmetry_no.darcy_utilities import DarcyExtractBC
+from .pde_utilities.helmholtz_utilities import HelmholtzExtractBC
+from .pde_utilities.darcy_utilities import DarcyExtractBC
 
 
 def sample_Darcy(rate, input=None, alpha_a=0.5, alpha_g=1, sigma_g=1, keepsize=False):

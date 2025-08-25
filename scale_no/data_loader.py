@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from scale_no.pde_utilities.darcy_utilities import DarcyExtractBC
 from scale_no.pde_utilities.helmholtz_utilities import HelmholtzExtractBC
 from scale_no.pde_utilities.burgers_utilities import BurgersExtractBC
-from scale_no.pde_utilities.data_augmentation import AugmentedTensorDataset, Compose, RandomCropResize, RandomFlip, GridResizing, GridResize
+from scale_no.data_augmentation import AugmentedTensorDataset, Compose, RandomCropResize, RandomFlip, GridResizing, GridResize
 from scale_no.rootdir import ROOT_DIR
 
 # taken from 

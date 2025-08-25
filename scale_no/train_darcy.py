@@ -10,8 +10,6 @@ from scale_no.models.fno2d_doubled import *
 from scale_no.models.fno_u import *
 from scale_no.models.fno_re import *
 from scale_no.models.unet import UNet2d
-from scale_no.models.CNO_original.CNOModule import CNO
-from scale_no.models.CNO import CNO2d
 from scale_no.selfconsistency import LossSelfconsistency
 from scale_no.super_sample import sample_Darcy
 from scale_no.data_augmentation import RandomFlip
